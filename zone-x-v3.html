@@ -2535,12 +2535,20 @@ const ED_LBL={
   [T.CAMERA_TILE]:'@',[T.ALARM_LIGHT]:'!',[T.ELECTRO_FLOOR]:'~',
 };
 
+// Robot placement tools (negative IDs = not real tiles)
+const ROB_TOOL_NORMAL=-1, ROB_TOOL_FAST=-2, ROB_TOOL_HEAVY=-3;
+const ROB_TOOL_NAMES ={[-1]:'R-Norm',[-2]:'R-Fast',[-3]:'R-Heavy'};
+const ROB_TOOL_COLS  ={[-1]:'#ffcc44',[-2]:'#ff8800',[-3]:'#ff3333'};
+const ROB_TOOL_TYPES ={[-1]:'normal',[-2]:'fast',[-3]:'heavy'};
+const ROB_TOOL_SPEEDS={[-1]:1.0,[-2]:1.5,[-3]:0.8};
+
 const ED_PALETTE=[
   T.FLOOR,T.WALL,T.PLUTONIUM,T.CONTAINER,T.KEY,T.MAT_PICKUP,
   T.TIME_ICON,T.BONUS,T.SPADE,T.CRUMBLY,T.GREEN_DOOR,T.SLAM_DOOR,
   T.LASER_DOOR,T.AIR_LOCK,T.WARP_DOOR,T.OUT_DOOR,T.ACID_POOL,
   T.FORCE_FIELD,T.CONVEYOR_R,T.CONVEYOR_L,T.CONVEYOR_U,T.CONVEYOR_D,
   T.CHEST,T.CAMERA_TILE,T.ALARM_LIGHT,T.ELECTRO_FLOOR,
+  ROB_TOOL_NORMAL,ROB_TOOL_FAST,ROB_TOOL_HEAVY,
 ];
 const ED_PAL_NAMES={
   [T.FLOOR]:'Floor',[T.WALL]:'Wall',[T.PLUTONIUM]:'Plu',[T.CONTAINER]:'Cont',
@@ -2552,6 +2560,40 @@ const ED_PAL_NAMES={
   [T.ALARM_LIGHT]:'Alarm',[T.ELECTRO_FLOOR]:'Elec',
 };
 
+const ED_PAL_DESC={
+  [T.FLOOR]:       'Begehbares Bodenfeld. Neutrale Fläche auf der alle Spielelemente platziert werden können.',
+  [T.WALL]:        'Unpassierbare Wand. Blockiert Spieler und Roboter vollständig. Grundbaustein für Korridore und Räume.',
+  [T.PLUTONIUM]:   'Radioaktives Material. Muss vollständig eingesammelt werden. Jede Aufnahme startet oder verkürzt den Strahlungs-Countdown.',
+  [T.CONTAINER]:   'Abgabebehälter für Plutonium. Mehrere Stücke auf einmal abgeben erhöht den Bonus exponentiell (n²×500 Pkt.).',
+  [T.KEY]:         'Schlüssel. Einmalig verwendbar – öffnet dauerhaft eine Grüne Tür. Ohne Schlüssel ist die Tür unpassierbar.',
+  [T.MAT_PICKUP]:  'Schutzmatten. Aufnehmen und mit LEERTASTE ablegen. Roboter können die Matte nicht überqueren.',
+  [T.TIME_ICON]:   'Zeitkanister. Gibt dem Strahlungs-Timer +12 Sekunden zurück. Lebensrettend in späten Zonen.',
+  [T.BONUS]:       'Bonusfeld. Enthält 500 mysteriöse Bonuspunkte. Einfach drüberlaufen zum Einsammeln.',
+  [T.SPADE]:       'Schaufel. Tragen erlaubt das Durchgraben von Brüchigen Wänden. Danach verbraucht.',
+  [T.CRUMBLY]:     'Brüchige Wand. Nur mit Schaufel passierbar – zerfällt beim Durchqueren dauerhaft.',
+  [T.GREEN_DOOR]:  'Grüne Tür. Öffnet sich bei Schlüsselkontakt dauerhaft und verschwindet aus der Karte.',
+  [T.SLAM_DOOR]:   'Schlagdurchgang. Einbahnstraße – schließt sich sofort hinter dem Spieler. Kein Zurück.',
+  [T.LASER_DOOR]:  'Laserbarrikade. Wechselt zwischen offen und geschlossen. Beim aktiven Strahl durchlaufen = sofortiger Tod.',
+  [T.AIR_LOCK]:    'Schleuse. Betreten öffnet automatisch einen benachbarten, bisher gesperrten Bereich.',
+  [T.WARP_DOOR]:   'Teleporter. Sofortiger Sprung zum gekoppelten Warp-Ausgang. Paare werden vom Generator vergeben.',
+  [T.OUT_DOOR]:    'Ausgang. Öffnet sich erst wenn sämtliches Plutonium abgegeben wurde. Ziel jedes Levels.',
+  [T.ACID_POOL]:   'Säurebad. Sofortiger Tod bei Berührung. Vollständig unpassierbar, auch für Roboter.',
+  [T.FORCE_FIELD]: 'Kraftfeld. Einwegwand – nur aus der Pfeilrichtung begehbar. Andere Seite blockiert wie eine Wand.',
+  [T.CONVEYOR_R]:  'Förderband (→). Schiebt Spieler und Roboter automatisch nach rechts, solange sie darauf stehen.',
+  [T.CONVEYOR_L]:  'Förderband (←). Schiebt Spieler und Roboter automatisch nach links.',
+  [T.CONVEYOR_U]:  'Förderband (↑). Schiebt Spieler und Roboter automatisch nach oben.',
+  [T.CONVEYOR_D]:  'Förderband (↓). Schiebt Spieler und Roboter automatisch nach unten.',
+  [T.CHEST]:       'Truhe. Enthält ein zufälliges verstecktes Objekt. Gegen die Truhe laufen öffnet sie.',
+  [T.CAMERA_TILE]: 'Überwachungskamera. Dreht ihren Sichtstrahl periodisch. Sichtkontakt mit dem Spieler löst sofort den Alarm aus.',
+  [T.ALARM_LIGHT]: 'Alarmsensor. Einmaliger Bodenkontakt genügt um den Alarm dauerhaft auszulösen.',
+  [T.ELECTRO_FLOOR]:'Elektroboden. Im Normalzustand sicher. Wird bei aktivem Alarm sofort tödlich.',
+};
+const ROB_TOOL_DESC={
+  [-1]:'Normaler Roboter. Patrouilliert auf seiner Achse. Berühren ist tödlich. Kann durch Matten kurz aufgehalten werden.',
+  [-2]:'Schneller Roboter. Bewegt sich sehr rasch – kaum Zeit zum Ausweichen. Besonders gefährlich in engen Korridoren.',
+  [-3]:'Schwerer Roboter. Tötet auch auf angrenzenden Feldern ohne direkten Kontakt. Langsamer aber mit größerer Gefahrenzone.',
+};
+
 // Sidebar widths/heights
 const ED_PAL_W   = 168;  // right sidebar px
 const ED_TOOL_H  = 52;   // bottom toolbar px
@@ -2559,6 +2601,7 @@ const ED_TS      = 20;   // map tile size in editor (px)
 
 let ed={
   map:null,
+  robots:[],
   selTile:T.WALL,
   camX:0,camY:0,
   dragging:false,erasing:false,
@@ -2570,6 +2613,7 @@ let ed={
   aiDifficulty:5,
   aiGenerating:false,
   aiLastMsg:'',
+  hovPalIdx:-1,
 };
 
 function edMapW(){ return CW-ED_PAL_W; }
@@ -2583,7 +2627,7 @@ function editorInit(){
     for(let c=0;c<COLS;c++)
       ed.map[r][c]=(r===0||r===ROWS-1||c===0||c===COLS-1)?T.WALL:T.FLOOR;
   }
-  ed.camX=0;ed.camY=0;ed.playerC=2;ed.playerR=2;
+  ed.camX=0;ed.camY=0;ed.playerC=2;ed.playerR=2;ed.robots=[];
 }
 
 function onEditorKey(code){
@@ -2597,6 +2641,19 @@ function onEditorKey(code){
 }
 
 // ── Draw editor ─────────────────────────────────────────────────
+function palWrapLines(ctx,text,maxW){
+  const words=text.split(' ');
+  const lines=[];
+  let line='';
+  for(const w of words){
+    const test=line?line+' '+w:w;
+    if(ctx.measureText(test).width>maxW&&line){lines.push(line);line=w;}
+    else line=test;
+  }
+  if(line)lines.push(line);
+  return lines;
+}
+
 function drawEditor(){
   if(!ed.map) editorInit();
   ctx.save();
@@ -2639,16 +2696,40 @@ function drawEditor(){
     ctx.fillText('P',psx+ED_TS/2,psy+ED_TS/2+1);ctx.restore();
   }
 
+  // Placed robots
+  for(const rob of ed.robots){
+    const rx=(rob.c-ed.camX)*ED_TS,ry=(rob.r-ed.camY)*ED_TS;
+    if(rx<-ED_TS||ry<-ED_TS||rx>=MW||ry>=MH)continue;
+    const rc=ROB_TOOL_COLS[rob._tool]||'#ffcc44';
+    ctx.save();
+    ctx.shadowBlur=6;ctx.shadowColor=rc;
+    ctx.fillStyle=rc+'44';ctx.fillRect(rx,ry,ED_TS,ED_TS);
+    ctx.strokeStyle=rc;ctx.lineWidth=1.5;ctx.strokeRect(rx+1,ry+1,ED_TS-2,ED_TS-2);
+    ctx.fillStyle=rc;ctx.font=`bold ${ED_TS-5}px monospace`;
+    ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText('R',rx+ED_TS/2,ry+ED_TS/2+1);
+    ctx.restore();
+  }
+
   // Hover cursor
   if(ed.mouseC>=0&&ed.mouseC<COLS&&ed.mouseR>=0&&ed.mouseR<ROWS){
     const hx=(ed.mouseC-ed.camX)*ED_TS,hy=(ed.mouseR-ed.camY)*ED_TS;
     ctx.save();
     // tile preview at 50% alpha
     if(!ed.erasing&&!ed.setStartMode){
-      ctx.globalAlpha=0.55;
-      ctx.beginPath();ctx.rect(hx,hy,ED_TS,ED_TS);ctx.clip();
-      ctx.translate(hx,hy);ctx.scale(ED_TS/TILE,ED_TS/TILE);
-      drawTile(ed.selTile,0,0,ed.mouseC,ed.mouseR);
+      if(ed.selTile<0){
+        const rc=ROB_TOOL_COLS[ed.selTile];
+        ctx.globalAlpha=0.6;
+        ctx.fillStyle=rc+'44';ctx.fillRect(hx,hy,ED_TS,ED_TS);
+        ctx.fillStyle=rc;ctx.font=`bold ${ED_TS-5}px monospace`;
+        ctx.textAlign='center';ctx.textBaseline='middle';
+        ctx.fillText('R',hx+ED_TS/2,hy+ED_TS/2+1);
+      } else {
+        ctx.globalAlpha=0.55;
+        ctx.beginPath();ctx.rect(hx,hy,ED_TS,ED_TS);ctx.clip();
+        ctx.translate(hx,hy);ctx.scale(ED_TS/TILE,ED_TS/TILE);
+        drawTile(ed.selTile,0,0,ed.mouseC,ed.mouseR);
+      }
     }
     ctx.restore();
     ctx.save();
@@ -2666,19 +2747,19 @@ function drawEditor(){
 
   // Title
   ctx.fillStyle='#00bb44';ctx.font='bold 10px monospace';ctx.textAlign='center';
-  ctx.fillText('TILE PALETTE',PX+ED_PAL_W/2,13);
+  ctx.fillText('PALETTE',PX+ED_PAL_W/2,13);
 
   // Selected tile label
-  const selName=ED_PAL_NAMES[ed.selTile]||'?';
+  const selName=ED_PAL_NAMES[ed.selTile]||ROB_TOOL_NAMES[ed.selTile]||'?';
   ctx.fillStyle='#00ff88';ctx.font='bold 9px monospace';ctx.textAlign='center';
   ctx.fillText('['+selName+']',PX+ED_PAL_W/2,24);
 
-  // Palette grid: 2 columns with real square tile icons
-  const PAL_ICO=28; // square icon size px
-  const PAL_PAD=8;
-  const palCols=2;
+  // Palette grid: 3 columns with real square tile icons
+  const PAL_ICO=20; // square icon size px
+  const PAL_PAD=6;
+  const palCols=3;
   const palColW=Math.floor((ED_PAL_W-PAL_PAD*2-4)/palCols); // cell width
-  const palRowH=PAL_ICO+16; // icon + name below
+  const palRowH=PAL_ICO+14; // icon + name below
   ED_PALETTE.forEach((tid,i)=>{
     const col=i%palCols,row=Math.floor(i/palCols);
     const cellX=PX+PAL_PAD+col*(palColW+4);
@@ -2688,17 +2769,29 @@ function drawEditor(){
     const iconY=cellY;
     // dark bg
     ctx.fillStyle='#040f06';ctx.fillRect(iconX,iconY,PAL_ICO,PAL_ICO);
-    // draw perfectly square tile icon
-    ctx.save();
-    ctx.beginPath();ctx.rect(iconX,iconY,PAL_ICO,PAL_ICO);ctx.clip();
-    ctx.translate(iconX,iconY);
-    ctx.scale(PAL_ICO/TILE,PAL_ICO/TILE);
-    drawTile(tid,0,0,1,1);
-    ctx.restore();
+    // draw tile icon — robot tools use custom glyph
+    if(tid<0){
+      const rc=ROB_TOOL_COLS[tid];
+      ctx.save();
+      ctx.fillStyle=rc+'33';ctx.fillRect(iconX,iconY,PAL_ICO,PAL_ICO);
+      ctx.shadowBlur=8;ctx.shadowColor=rc;
+      ctx.fillStyle=rc;ctx.font=`bold ${PAL_ICO-6}px monospace`;
+      ctx.textAlign='center';ctx.textBaseline='middle';
+      ctx.fillText('R',iconX+PAL_ICO/2,iconY+PAL_ICO/2+1);
+      ctx.restore();
+    } else {
+      ctx.save();
+      ctx.beginPath();ctx.rect(iconX,iconY,PAL_ICO,PAL_ICO);ctx.clip();
+      ctx.translate(iconX,iconY);
+      ctx.scale(PAL_ICO/TILE,PAL_ICO/TILE);
+      drawTile(tid,0,0,1,1);
+      ctx.restore();
+    }
     // name label
-    ctx.fillStyle='rgba(160,230,160,0.8)';ctx.font='6px monospace';
+    ctx.fillStyle=tid<0?ROB_TOOL_COLS[tid]+'cc':'rgba(160,230,160,0.8)';
+    ctx.font='5px monospace';
     ctx.textAlign='center';ctx.textBaseline='alphabetic';
-    ctx.fillText(ED_PAL_NAMES[tid]||tid,iconX+PAL_ICO/2,iconY+PAL_ICO+10);
+    ctx.fillText(ED_PAL_NAMES[tid]||ROB_TOOL_NAMES[tid]||tid,iconX+PAL_ICO/2,iconY+PAL_ICO+9);
     // selection ring (around icon only, square)
     if(tid===ed.selTile){
       ctx.save();ctx.shadowBlur=8;ctx.shadowColor='#00ff88';
@@ -2711,7 +2804,7 @@ function drawEditor(){
   });
 
   // Mode indicator in sidebar
-  const modeY=32+Math.ceil(ED_PALETTE.length/palCols)*((28+16+4))+10;
+  const modeY=32+Math.ceil(ED_PALETTE.length/palCols)*(palRowH+4)+10;
   if(ed.setStartMode){
     ctx.fillStyle='#2244ff';ctx.font='bold 9px monospace';ctx.textAlign='center';
     ctx.fillText('>> CLICK START <<',PX+ED_PAL_W/2,modeY);
@@ -2805,6 +2898,73 @@ function drawEditor(){
   const aiMsg=ed.aiLastMsg?`AI: ${ed.aiLastMsg.slice(0,60)}`:'LMB paint  RMB erase  ARROWS pan  [G] grid  [E]/[ESC] close';
   ctx.fillStyle=ed.aiLastMsg?'#886600':'#1a3a1a';
   ctx.fillText(aiMsg,6,TBY+ED_TOOL_H-5);
+
+  // ── Palette hover tooltip ─────────────────────────────────────
+  if(ed.hovPalIdx>=0&&ed.hovPalIdx<ED_PALETTE.length){
+    const htid=ED_PALETTE[ed.hovPalIdx];
+    const hrow=Math.floor(ed.hovPalIdx/3);
+    const rowCenterY=32+hrow*(20+14+4)+10;
+    const ICO3=60;   // 3× the 20px palette icon
+    const TTW=168;   // tooltip width — matches sidebar for clean alignment
+    const TXT_PAD=8; // horizontal text padding
+    const TXT_W=TTW-TXT_PAD*2;
+    const DESC_LH=11; // description line height
+    // pre-compute description lines to know tooltip height
+    const hname=ED_PAL_NAMES[htid]||ROB_TOOL_NAMES[htid]||'?';
+    const hdesc=ED_PAL_DESC[htid]||ROB_TOOL_DESC[htid]||'';
+    ctx.font='9px monospace'; // set font before measureText
+    const descLines=hdesc?palWrapLines(ctx,hdesc,TXT_W):[];
+    const TTH=8+ICO3+14+4+2+descLines.length*DESC_LH+10; // top+icon+name+sep+desc+bottom
+    const ttX=PX-TTW-6;
+    const ttY=Math.max(2,Math.min(CH-ED_TOOL_H-TTH-2,rowCenterY-TTH/2));
+    // drop shadow + dark background
+    ctx.save();
+    ctx.shadowBlur=20;ctx.shadowColor='rgba(0,255,100,0.35)';
+    ctx.fillStyle='rgba(1,12,5,0.98)';ctx.fillRect(ttX,ttY,TTW,TTH);
+    ctx.restore();
+    // border
+    ctx.strokeStyle='#00cc55';ctx.lineWidth=1;
+    ctx.strokeRect(ttX+0.5,ttY+0.5,TTW-1,TTH-1);
+    // top accent stripe
+    ctx.fillStyle='rgba(0,200,80,0.12)';ctx.fillRect(ttX+1,ttY+1,TTW-2,3);
+    // draw element at 3× zoom
+    const icoX=ttX+(TTW-ICO3)/2;
+    const icoY=ttY+8;
+    ctx.save();
+    ctx.beginPath();ctx.rect(icoX,icoY,ICO3,ICO3);ctx.clip();
+    if(htid<0){
+      const rc=ROB_TOOL_COLS[htid];
+      ctx.fillStyle=rc+'22';ctx.fillRect(icoX,icoY,ICO3,ICO3);
+      ctx.shadowBlur=14;ctx.shadowColor=rc;
+      ctx.fillStyle=rc;ctx.font='bold 42px monospace';
+      ctx.textAlign='center';ctx.textBaseline='middle';
+      ctx.fillText('R',icoX+ICO3/2,icoY+ICO3/2+1);
+    } else {
+      ctx.translate(icoX,icoY);
+      ctx.scale(ICO3/TILE,ICO3/TILE);
+      drawTile(htid,0,0,1,1);
+    }
+    ctx.restore();
+    // name label — bold, crisp
+    const nameCol=htid<0?ROB_TOOL_COLS[htid]:'#00ff88';
+    ctx.fillStyle=nameCol;
+    ctx.font='bold 11px monospace';
+    ctx.textAlign='center';ctx.textBaseline='alphabetic';
+    ctx.fillText(hname,ttX+TTW/2,ttY+8+ICO3+13);
+    // separator line
+    const sepY=ttY+8+ICO3+18;
+    ctx.strokeStyle='rgba(0,180,60,0.3)';ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(ttX+TXT_PAD,sepY);ctx.lineTo(ttX+TTW-TXT_PAD,sepY);ctx.stroke();
+    // description text — wrapped, readable
+    ctx.fillStyle='rgba(180,230,180,0.9)';
+    ctx.font='9px monospace';
+    ctx.textAlign='left';ctx.textBaseline='alphabetic';
+    let dy=sepY+DESC_LH;
+    for(const ln of descLines){
+      ctx.fillText(ln,ttX+TXT_PAD,dy);
+      dy+=DESC_LH;
+    }
+  }
 }
 
 // ── Editor input ─────────────────────────────────────────────────
@@ -2826,7 +2986,20 @@ canvas.addEventListener('mousemove',e=>{
   if(edHitMap(sx,sy)){
     [ed.mouseC,ed.mouseR]=edScreenToTile(sx,sy);
     if(ed.dragging&&!ed.setStartMode) edPaint(ed.mouseC,ed.mouseR,ed.erasing);
-  } else { ed.mouseC=-1;ed.mouseR=-1; }
+    ed.hovPalIdx=-1;
+  } else {
+    ed.mouseC=-1;ed.mouseR=-1;
+    if(edHitPal(sx,sy)){
+      const _palColW=Math.floor((ED_PAL_W-6*2-4)/3);
+      const relX=sx-edMapW()-6,relY=sy-32;
+      if(relY>=0){
+        const hc=Math.min(2,Math.floor(relX/(_palColW+4)));
+        const hr=Math.floor(relY/(20+14+4));
+        const hi=hr*3+hc;
+        ed.hovPalIdx=(hi>=0&&hi<ED_PALETTE.length)?hi:-1;
+      } else { ed.hovPalIdx=-1; }
+    } else { ed.hovPalIdx=-1; }
+  }
 });
 
 canvas.addEventListener('mousedown',e=>{
@@ -2880,9 +3053,9 @@ canvas.addEventListener('wheel',e=>{
 
 function edPaletteClick(sx,sy){
   const PX=edMapW();
-  const PAL_ICO=28,PAL_PAD=8,palCols=2;
+  const PAL_ICO=20,PAL_PAD=6,palCols=3;
   const palColW=Math.floor((ED_PAL_W-PAL_PAD*2-4)/palCols);
-  const palRowH=PAL_ICO+16+4;
+  const palRowH=PAL_ICO+14+4;
   const relX=sx-PX-PAL_PAD,relY=sy-32;
   if(relY<0)return;
   const col=Math.min(palCols-1,Math.floor(relX/(palColW+4)));
@@ -2923,6 +3096,12 @@ function edToolbarClick(sx,sy){
 
 function edPaint(c,r,erase){
   if(!ed.map||c<0||r<0||c>=COLS||r>=ROWS)return;
+  if(ed.selTile<0){
+    // Robot tool: place or remove
+    ed.robots=ed.robots.filter(rob=>!(rob.c===c&&rob.r===r));
+    if(!erase) ed.robots.push({c,r,type:ROB_TOOL_TYPES[ed.selTile],axis:'h',range:4,speed:ROB_TOOL_SPEEDS[ed.selTile],_tool:ed.selTile});
+    return;
+  }
   ed.map[r][c]=erase?T.FLOOR:ed.selTile;
 }
 
@@ -2933,7 +3112,7 @@ function editorNew(){
     for(let c=0;c<COLS;c++)
       ed.map[r][c]=(r===0||r===ROWS-1||c===0||c===COLS-1)?T.WALL:T.FLOOR;
   }
-  ed.playerC=2;ed.playerR=2;ed.camX=0;ed.camY=0;
+  ed.playerC=2;ed.playerR=2;ed.camX=0;ed.camY=0;ed.robots=[];
 }
 
 function editorSave(){
@@ -2942,6 +3121,7 @@ function editorSave(){
     name:ed.name||'custom',cols:COLS,rows:ROWS,
     playerStart:{c:ed.playerC,r:ed.playerR},
     map:ed.map,
+    robots:ed.robots.map(rob=>({c:rob.c,r:rob.r,type:rob.type,axis:rob.axis,range:rob.range,speed:rob.speed})),
   };
   const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
   const url=URL.createObjectURL(blob);
@@ -2964,6 +3144,7 @@ function editorLoad(){
           ed.map=data.map.map(r=>Array.isArray(r)?[...r]:[]);
           ed.name=data.name||'loaded';
           if(data.playerStart){ed.playerC=data.playerStart.c||2;ed.playerR=data.playerStart.r||2;}
+          ed.robots=(data.robots||[]).map(rob=>({...rob,_tool:rob.type==='fast'?ROB_TOOL_FAST:rob.type==='heavy'?ROB_TOOL_HEAVY:ROB_TOOL_NORMAL}));
           ed.camX=0;ed.camY=0;
         }
       }catch(err){console.error('Load failed',err);}
@@ -3492,7 +3673,7 @@ function editorPlay(){
           px:sc*TILE,py:sr*TILE,tx:sc*TILE,ty:sr*TILE,
           moving:false,moveProgress:1.0,nextDx:0,nextDy:0,hasPending:false};
 
-  const robDefs=(ed.aiRobots&&ed.aiRobots.length>0)?ed.aiRobots:ROBOT_DEFS;
+  const robDefs=(ed.robots&&ed.robots.length>0)?ed.robots:(ed.aiRobots&&ed.aiRobots.length>0)?ed.aiRobots:ROBOT_DEFS;
   robots=robDefs.map((d,i)=>({
     c:d.c,r:d.r,px:d.c*TILE,py:d.r*TILE,tx:d.c*TILE,ty:d.r*TILE,
     moveProgress:1.0,prevC:d.c,prevR:d.r,
