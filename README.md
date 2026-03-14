@@ -32,7 +32,7 @@
 
 ### Historical Background
 
-**Zone X** was released in **1984/1985** for the Atari 8-bit family (400, 800, XL, XE series) by the British software house **Rabbit Software**. It was one of several top-down action-puzzle games that defined a particular subgenre on the Atari platform — games that blended real-time movement with resource management and spatial planning.
+**Zone X** https://archive.org/details/a8b_Zone_X_1985_Gremlin_Graphics_GB# was released in **1984/1985** for the Atari 8-bit family (400, 800, XL, XE series) by the British software house **Rabbit Software**. It was one of several top-down action-puzzle games that defined a particular subgenre on the Atari platform — games that blended real-time movement with resource management and spatial planning.
 
 The Atari XL/XE machines were remarkably capable for their era: the **MOS 6502** processor running at 1.79 MHz, the **GTIA/ANTIC** custom chips handling graphics with hardware sprites and smooth scrolling, and the **POKEY** chip generating distinctive 4-channel sound. Zone X leveraged these capabilities to deliver fluid movement and responsive controls that still hold up by modern standards.
 
