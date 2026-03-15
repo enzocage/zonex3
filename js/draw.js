@@ -93,15 +93,25 @@ function drawRobots(){
 
     // Heavy robot variant: larger, darker
     const isH=rob.type==='heavy',isF=rob.type==='fast';
-    const bc=isH?'#991100':isF?'#ff5555':C.rob;
-    const dc=isH?'#550000':isF?'#cc2222':C.robD;
+    let bc,dc;
+    if(isH){
+      const hue=(glowT*200+rob.id*37)%360;
+      bc=`hsl(${hue},100%,50%)`;
+      dc=`hsl(${hue},100%,28%)`;
+      ctx.shadowBlur=18;ctx.shadowColor=`hsl(${hue},100%,65%)`;
+    } else if(isF){
+      bc='#ff5555';dc='#cc2222';
+    } else {
+      bc=C.rob;dc=C.robD;
+    }
 
     ctx.fillStyle=dc;ctx.fillRect(px+(isH?1:3),py+(isH?3:5),S-(isH?2:6),S-(isH?5:8));
     ctx.fillStyle=bc;ctx.fillRect(px+(isH?2:4),py+(isH?4:6),S-(isH?4:8),S-(isH?8:10));
     // Head
     ctx.fillStyle=dc;ctx.fillRect(px+4,py+(isH?3:4),S-8,9);
     // Eyes
-    ctx.fillStyle=al>0.5?'#ff6600':C.robE;
+    const eyeCol=isH?bc:(al>0.5?'#ff6600':C.robE);
+    ctx.fillStyle=eyeCol;
     ctx.fillRect(px+7,py+(isH?5:7),isH?7:5,isH?4:3);
     ctx.fillRect(px+S-13,py+(isH?5:7),isH?7:5,isH?4:3);
     // Antenna
@@ -425,7 +435,7 @@ function drawTitle(){
   // Controls
   ctx.fillStyle='#0e2510';ctx.font='9px monospace';
   ctx.fillText('KEYBOARD: ARROWS·MOVE  SPACE·MAT  X·DROP  Z·MAP  F·FOG  ESC·PAUSE',CW/2,410);
-  ctx.fillText('MOBILE: SWIPE·MOVE  DOUBLE-TAP·MAT  TAP·START',CW/2,426);
+  ctx.fillText('MOBILE: SWIPE·MOVE  2-FINGER·MAT  TAP·START',CW/2,426);
 
   // Blink start
   if(Math.floor(Date.now()/550)%2===0){

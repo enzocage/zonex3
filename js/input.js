@@ -164,6 +164,13 @@ function touchDir(dx,dy){
 canvas.addEventListener('touchstart',e=>{
   e.preventDefault();
   ea();
+
+  // 2-finger touch → place mat behind player
+  if(e.touches.length>=2&&state==='playing'&&!pauseOn){
+    placeMatBehind();
+    return;
+  }
+
   const now=Date.now();
   const pt=e.touches[0];
   const rect=canvas.getBoundingClientRect();
@@ -219,24 +226,16 @@ canvas.addEventListener('touchend',e=>{
 
   if(state==='playing'&&!pauseOn){
     if(!touch.fired && dist<SWIPE_MIN && elapsed<300){
-      // Tap — double-tap = mat, single = move toward tapped side
-      touch.tapN = (now-touch.tapT<280) ? touch.tapN+1 : 1;
-      touch.tapT = now;
-      if(touch.tapN>=2){
-        touch.tapN=0;
-        placeMat();
+      // Tap → move toward tapped side
+      const cx=touch.x0, cy=touch.y0;
+      const midX=CW/2, midY=(VIEW_H*TILE)/2;
+      const adx=Math.abs(cx-midX), ady=Math.abs(cy-midY);
+      if(adx>ady){
+        const fd=cx>midX?1:-1;
+        player.facing=fd>0?0:2;doMove(fd,0);
       } else {
-        // Move based on which quadrant of screen was tapped
-        const cx=touch.x0, cy=touch.y0;
-        const midX=CW/2, midY=(VIEW_H*TILE)/2;
-        const adx=Math.abs(cx-midX), ady=Math.abs(cy-midY);
-        if(adx>ady){
-          const fd=cx>midX?1:-1;
-          player.facing=fd>0?0:2;doMove(fd,0);
-        } else {
-          const fd=cy>midY?1:-1;
-          player.facing=fd>0?1:3;doMove(0,fd);
-        }
+        const fd=cy>midY?1:-1;
+        player.facing=fd>0?1:3;doMove(0,fd);
       }
     }
   }

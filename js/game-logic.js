@@ -50,6 +50,7 @@ function commitMove(dx,dy){
   if(t===T.LASER_DOOR&&!laserOpen){die('laser');return;}
 
   // Commit grid position
+  player.prevC=player.c;player.prevR=player.r;
   player.c=nc;player.r=nr;
   player.animT++;
   stepT++;if(stepT>=4){stepT=0;sfx.step();}
@@ -212,6 +213,15 @@ function dropPlu(){
     if(nc>=0&&nr>=0&&nc<COLS&&nr<ROWS&&map[nr][nc]===T.FLOOR){
       map[nr][nc]=T.PLUTONIUM;placed++;burst(nc,nr,C.plu,8);
     }
+  }
+}
+
+function placeMatBehind(){
+  if(state!=='playing'||matsCarried<=0||!player||player.prevC===undefined)return;
+  const nc=player.prevC,nr=player.prevR;
+  if(nc>=0&&nr>=0&&nc<COLS&&nr<ROWS&&map[nr][nc]===T.FLOOR){
+    map[nr][nc]=T.MAT_PICKUP;matsCarried--;
+    sfx.mat();burst(nc,nr,C.mat,6);
   }
 }
 
