@@ -413,7 +413,8 @@ function drawEditor(){
   ctx.textAlign='center';ctx.textBaseline='alphabetic';
   ctx.fillText('DIFFICULTY',stepX+36,BY+BH+10);
 
-  // Close button far right
+  // Undo button + Close button far right
+  edBtn('↩ UNDO',CW-140,50,false,'#1a0a00');
   edBtn('[ESC]CLOSE',CW-84,80,false);
 
   // Hint line
@@ -620,9 +621,22 @@ function edToolbarClick(sx,sy){
     if(sx>=stepX+54&&sx<=stepX+72){                           // plus
       ed.aiDifficulty=Math.min(10,ed.aiDifficulty+1);return;
     }
+    // Undo
+    if(sx>=CW-140&&sx<CW-84){ edUndo();return; }
     // Close
     if(sx>=CW-84&&sx<=CW){ editorOn=false;pauseOn=false;return; }
   }
+}
+
+// Undo stack: each entry = {t, c, r, prevTile}
+const edUndoStack=[];
+const ED_UNDO_MAX=64;
+
+function edUndo(){
+  if(!edUndoStack.length||!ed.map)return;
+  const entry=edUndoStack.pop();
+  ed.map[entry.r][entry.c]=entry.prevTile;
+  sfx.edUndo();
 }
 
 function edPaint(c,r,erase){
@@ -633,6 +647,10 @@ function edPaint(c,r,erase){
     if(!erase) ed.robots.push({c,r,type:ROB_TOOL_TYPES[ed.selTile],axis:'h',range:4,speed:ROB_TOOL_SPEEDS[ed.selTile],_tool:ed.selTile});
     return;
   }
+  // Push undo entry before changing tile
+  const prev=ed.map[r][c];
+  if(edUndoStack.length>=ED_UNDO_MAX)edUndoStack.shift();
+  edUndoStack.push({t:Date.now(),c,r,prevTile:prev});
   // Warp door: must be placed in pairs
   if(ed.selTile===T.WARP_DOOR){
     if(erase){
@@ -653,6 +671,7 @@ function edPaint(c,r,erase){
     return;
   }
   ed.map[r][c]=erase?T.FLOOR:ed.selTile;
+  sfx.edPlace();
 }
 
 function editorNew(){

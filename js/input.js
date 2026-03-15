@@ -178,6 +178,9 @@ canvas.addEventListener('touchstart',e=>{
     if(e.touches.length>=2){
       // Two-finger → pan camera; cancel any pending paint and block painting for 500 ms
       if(edPaintTimer){clearTimeout(edPaintTimer);edPaintTimer=null;}
+      // Undo last paint if it happened within the last 500 ms
+      const _last=edUndoStack[edUndoStack.length-1];
+      if(_last&&Date.now()-_last.t<500)edUndo();
       const pt2=e.touches[1];
       const sx2=(pt2.clientX-rect.left)/scale;
       const sy2=(pt2.clientY-rect.top)/scale;
@@ -207,7 +210,7 @@ canvas.addEventListener('touchstart',e=>{
             if(edTouch.panning)return; // second finger arrived → was a scroll
             ed.dragging=true;ed.erasing=false;
             edPaint(snapC,snapR,false);
-          },200);
+          },2);
         }
       }
     }

@@ -387,4 +387,18 @@ const sfx={
     osc(220,0.08,'triangle',0.08,{attack:0.003});
     osc(440,0.05,'triangle',0.05,{attack:0.005});
   },
+
+  // Editor tile place: subtle soft click
+  edPlace:()=>{
+    if(!aCtx||!sfxGain)return;
+    osc(1100,0.03,'sine',0.04,{attack:0.001,slide:-350});
+    noiseN(0.018,0.01,'highpass',2800);
+  },
+
+  // Editor undo: short downward blip
+  edUndo:()=>{
+    if(!aCtx||!sfxGain)return;
+    osc(600,0.06,'sine',0.06,{attack:0.001,slide:-300});
+    osc(400,0.05,'sine',0.04,{attack:0.002,slide:-150});
+  },
 };
