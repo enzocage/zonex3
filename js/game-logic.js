@@ -95,7 +95,7 @@ function interactTile(c,r){
     if(radTimer<=0)radTimer=radMax;
     score+=CONF.PLU_SCORE;
     addCombo();
-    sfx.pickup();burst(c,r,C.plu,16);
+    sfx.pickup();playJingle('plutonium',0.2);burst(c,r,C.plu,16);
     addPopup(c,r,'+'+CONF.PLU_SCORE);
     if(pluLeft===0)openExit();
   }
@@ -159,6 +159,7 @@ function openChest(c,r){
 
 function triggerAlarm(){
   alarmOn=true;alarmT=0;alarmSfxT=0;sfx.alarm();
+  playJingle('alarm');
   flash=0.5;flashCol=C.alarm;
   addPopup(player.c,player.r,'☢ ALARM! ☢');
   // Electro floors activate; robots speed up briefly
@@ -243,6 +244,7 @@ function solid(c,r){
 function die(cause){
   if(state!=='playing')return;
   state='dead';deathT=2.0;sfx.death();shake=14;
+  setRadCritMusic(false);
   if(cause==='acid')flash=0.8,flashCol='#44ff44';
   else if(cause==='shock')flash=0.8,flashCol=C.elec;
   else flash=0.8,flashCol='#ff0000';
@@ -250,7 +252,7 @@ function die(cause){
   lives--;
 }
 function respawn(){
-  if(lives<=0){state='over';return;}
+  if(lives<=0){state='over';playJingleExclusive('gameOver',true);return;}
   // Preserve alarm across reload
   const savedAlarmOn=alarmOn,savedAlarmT=alarmT,savedAlarmSfxT=alarmSfxT;
   // Full reload: restores map, robots, cameras, player from level data
@@ -278,7 +280,7 @@ function levelDone(){
   const bonus=CONF.ZONE_BONUS_BASE*zone+(totalT<60?CONF.ZONE_FAST_BONUS:0)+(lives*CONF.LIVES_BONUS);
   score+=bonus;zoneScore=bonus;
   if(score>hiScore)hiScore=score;
-  sfx.win();flash=0.8;flashCol=C.out;
+  sfx.win();playJingle('levelWin');flash=0.8;flashCol=C.out;
   // Auto-advance to next JSON level after 2.5 s
   if(currentLevelIndex>0&&currentLevelIndex<levelCount){
     setTimeout(()=>{if(state==='win')nextZone();},2500);

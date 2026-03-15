@@ -5,6 +5,7 @@
 // ═══════════════════════════════════════════════════════════════
 function startGame(){
   ea();
+  playJingle('gameStart');
   syncLevelIndex();
   score=0;lives=CONF.START_LIVES;zone=1;hiScore=Math.max(hiScore,score);
   zoneScore=0;

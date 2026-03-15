@@ -82,7 +82,7 @@ function onKey(code){
   if(helpOn){ processHelpInput(code); return; }
   if(editorOn){ onEditorKey(code); return; }
   if(state==='title')  { processTitleInput(code); return; }
-  if(state==='over')   { if(code==='Enter')state='title'; return; }
+  if(state==='over')   { if(code==='Enter'){stopEventMusic();state='title';} return; }
   if(state==='win')    { if(code==='Enter')nextZone(); return; }
   if(code==='KeyH')    { helpOn=!helpOn; return; }
   if(code==='KeyE')    {
@@ -174,7 +174,7 @@ canvas.addEventListener('touchstart',e=>{
 
   // Screen-state taps
   if(state==='title')  { ea();startGame(); return; }
-  if(state==='over')   { state='title'; return; }
+  if(state==='over')   { stopEventMusic();state='title'; return; }
   if(state==='win')    { nextZone(); return; }
 },{passive:false});
 

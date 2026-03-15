@@ -40,8 +40,14 @@ function update(dt){
   if(radTimer>0&&pluCarried>0){
     radTimer-=dt*(1+zone*0.04);
     if(radTimer<=0){radTimer=0;die('radiation');}
-    // Warn when critically low
-    else if(radTimer<4&&Math.floor(totalT*4)!==Math.floor((totalT-dt)*4)) sfx.radWarn();
+    else if(radTimer<4){
+      if(Math.floor(totalT*4)!==Math.floor((totalT-dt)*4)) sfx.radWarn();
+      setRadCritMusic(true);
+    } else {
+      setRadCritMusic(false);
+    }
+  } else {
+    setRadCritMusic(false);
   }
 
   // Lasers

@@ -55,10 +55,80 @@ function setSfxVol(v){
   sfxVol=Math.max(0,Math.min(1,v));
   if(sfxGain) sfxGain.gain.setTargetAtTime(sfxVol,aCtx.currentTime,0.05);
 }
-// toggleMusic defined above in initMusic block
 function updateMusicBtn(){
   const b=document.getElementById('btnMusic');
   if(b) b.textContent=musicOn?'♪ ON':'♪ OFF';
+}
+
+// ── Event Jingles ────────────────────────────────────────────────
+// Short MP3 clips for game events. Volume scales with the music slider
+// (musicVol default 0.10 → factor 8 → 0.80 perceived level at default).
+const JINGLE={
+  plutonium: 'https://fi.zophar.net/soundfiles/commodore-64/wizball/08_Jingle%20%233.mp3',
+  gameOver:  'https://fi.zophar.net/soundfiles/commodore-64/bubble-bobble/12_Game%20Over.mp3',
+  gameStart: 'https://fi.zophar.net/soundfiles/commodore-64/ball-blasta/02_Game%20On%21.mp3',
+  alarm:     'https://fi.zophar.net/soundfiles/commodore-64/bubble-bobble/06_Skull%20Monster%20Appearance.mp3',
+  levelWin:  'https://fi.zophar.net/soundfiles/commodore-64/hyper-sports/03_World%20Record.mp3',
+  radCrit:   'https://fi.zophar.net/soundfiles/commodore-64/katakis/11_Boss%20Theme%205%20and%2012.mp3',
+};
+const jingleEls={};
+let radCritOn=false;
+
+function _jEl(key,loop=false){
+  if(!jingleEls[key]){
+    const el=document.createElement('audio');
+    el.preload='auto';
+    el.src=JINGLE[key];
+    el.loop=loop;
+    document.body.appendChild(el);
+    jingleEls[key]=el;
+  }
+  return jingleEls[key];
+}
+// Volume relative to music slider (rel=1 → 80 % at default 10 % slider)
+function _jVol(rel=1){return Math.min(1,musicVol*8*rel);}
+
+// Play jingle alongside background music (one-shot)
+function playJingle(key,rel=1){
+  const el=_jEl(key,false);
+  el.loop=false;
+  el.volume=_jVol(rel);
+  el.currentTime=0;
+  el.play().catch(()=>{});
+}
+
+// Stop bg + all jingles, play this one (e.g. Game Over loops, others once)
+function playJingleExclusive(key,loop=false,rel=1){
+  if(musicEl)musicEl.pause();
+  for(const k in jingleEls){if(k!==key){jingleEls[k].pause();jingleEls[k].currentTime=0;}}
+  radCritOn=false;
+  const el=_jEl(key,loop);
+  el.loop=loop;
+  el.volume=_jVol(rel);
+  el.currentTime=0;
+  el.play().catch(()=>{});
+}
+
+// Stop all event jingles and optionally resume background music
+function stopEventMusic(){
+  for(const el of Object.values(jingleEls)){el.pause();el.currentTime=0;}
+  radCritOn=false;
+  if(musicOn&&musicEl)musicEl.play().catch(()=>{});
+}
+
+// Called every frame from update() – starts/stops the radiation-critical loop
+function setRadCritMusic(on){
+  if(on===radCritOn)return;
+  radCritOn=on;
+  const el=_jEl('radCrit',true);
+  if(on){
+    el.loop=true;
+    el.volume=_jVol(0.2); // 20 % level as requested
+    el.currentTime=0;
+    el.play().catch(()=>{});
+  }else{
+    el.pause();el.currentTime=0;
+  }
 }
 
 // ── Synthesis primitives ────────────────────────────────────────
