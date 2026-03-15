@@ -58,7 +58,13 @@ function processHelpInput(code){
 }
 
 function processTitleInput(code){
-  if(code==='Enter'||code==='Space'){ea();startGame();}
+  if(code==='Enter'||code==='Space'){
+    // Wenn das Level-Dropdown fokussiert ist, nur den Fokus entfernen, nicht starten
+    const sel=document.getElementById('levelSelect');
+    if(sel&&document.activeElement===sel){sel.blur();return;}
+    syncLevelIndex();
+    ea();startGame();
+  }
 }
 
 function processPlayingInput(code){

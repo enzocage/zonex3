@@ -1,6 +1,6 @@
 // === ZONE X - Level Manager ===
 // ── Neue Level: Nummer hier eintragen wenn neue JSON-Files in Levels/ hinzugefügt werden ──
-const AVAILABLE_LEVELS = [1, 2, 3, 4, 5];
+const AVAILABLE_LEVELS = [1, 2, 3, 4, 5, 6];
 
 let currentLevelIndex = 0; // 0 = built-in, sonst Index in AVAILABLE_LEVELS
 let levelCount = AVAILABLE_LEVELS.length;
@@ -38,7 +38,7 @@ function syncLevelIndex() {
 function loadLevelByIndex(n) {
   return new Promise(resolve => {
     const xhr = new XMLHttpRequest();
-    xhr.open('GET', `Levels/${n}.json`, true);
+    xhr.open('GET', `levels/${n}.json`, true);
     xhr.onload = () => {
       // status 0 = file:// success, 200 = HTTP success
       if (xhr.status === 200 || xhr.status === 0) {
@@ -114,3 +114,9 @@ function applyLevelData(data) {
 
 // Dropdown beim Laden sofort befüllen (kein async nötig)
 buildLevelDropdown();
+
+// Sofort syncen wenn Spieler Dropdown ändert
+(function(){
+  const sel = document.getElementById('levelSelect');
+  if(sel) sel.addEventListener('change', syncLevelIndex);
+})();
