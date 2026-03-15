@@ -87,6 +87,7 @@ function update(dt){
     player.py=player.startPy+(player.ty-player.startPy)*player.moveProgress;
     if(player.moveProgress>=1.0){
       player.px=player.tx;player.py=player.ty;
+      sfx.move();
       if(player.hasPending){
         player.hasPending=false;
         commitMove(player.nextDx,player.nextDy);

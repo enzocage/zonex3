@@ -38,4 +38,6 @@ let editorOn=false;
 
 // Positions of plutonium tiles already collected this level (persists across respawns)
 let collectedPlu=new Set();
+// Positions of green doors already opened this level (persists across respawns)
+let openedDoors=new Set();
 let _deathSnap=null; // unused, kept for safety

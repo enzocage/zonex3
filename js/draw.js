@@ -437,6 +437,8 @@ function drawTitle(){
     ctx.fillStyle='#1e4020';ctx.font='11px monospace';
     ctx.fillText(`HIGH SCORE: ${String(hiScore).padStart(7,'0')}`,CW/2,500);
   }
+  ctx.fillStyle='#0d1f0f';ctx.font='8px monospace';
+  ctx.fillText('Game by Felix Schmidt  ·  Original game by Derek Johnston 1985 Atari XL',CW/2,520);
 }
 
 function drawDead(){

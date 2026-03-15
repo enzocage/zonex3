@@ -42,6 +42,7 @@ function commitMove(dx,dy){
   if(solid(nc,nr)){
     if(t===T.GREEN_DOOR&&keysCarried>0){
       keysCarried--;map[nr][nc]=T.FLOOR;
+      openedDoors.add(`${nc}:${nr}`);
       sfx.key();burst(nc,nr,C.gDoor,12);
     } else return;
   }
@@ -95,7 +96,7 @@ function interactTile(c,r){
     if(radTimer<=0)radTimer=radMax;
     score+=CONF.PLU_SCORE;
     addCombo();
-    sfx.pickup();playJingle('plutonium',0.2);burst(c,r,C.plu,16);
+    sfx.pickup();burst(c,r,C.plu,16);
     addPopup(c,r,'+'+CONF.PLU_SCORE);
     if(pluLeft===0)openExit();
   }
@@ -262,6 +263,11 @@ function respawn(){
     const[c,r]=key.split(':').map(Number);
     if(map[r]&&map[r][c]===T.PLUTONIUM)map[r][c]=T.FLOOR;
   }
+  // Re-open all previously unlocked green doors
+  for(const key of openedDoors){
+    const[c,r]=key.split(':').map(Number);
+    if(map[r]&&map[r][c]===T.GREEN_DOOR)map[r][c]=T.FLOOR;
+  }
   // Recount pluLeft
   pluLeft=0;
   for(let r=0;r<ROWS;r++)
@@ -289,6 +295,7 @@ function levelDone(){
 function nextZone(){
   zone++;state='playing';
   collectedPlu.clear(); // fresh level, reset collected tracking
+  openedDoors.clear();
   if(currentLevelIndex>0&&currentLevelIndex<levelCount){
     currentLevelIndex++;
     resetLevel();

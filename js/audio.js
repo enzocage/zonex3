@@ -174,6 +174,12 @@ function chord(freqs,d,type,v){
 
 // ── SFX Library ─────────────────────────────────────────────────
 const sfx={
+  // Subtle movement rustle: barely audible lowpass noise on every grid step
+  move:()=>{
+    if(!aCtx)return;
+    noiseN(0.025,0.003,'lowpass',150+Math.random()*50,0.3);
+  },
+
   // Footstep: punchy low thud with tiny pitch variation
   step:()=>{
     if(!aCtx)return;
@@ -182,13 +188,16 @@ const sfx={
     noiseN(0.05,0.025,'highpass',2000);
   },
 
-  // Plutonium pickup: bright ascending chime with shimmer
+  // Plutonium pickup: sharp impact + bright ascending arpeggio
   pickup:()=>{
     ea();
-    osc(660,0.08,'sine',0.14,{attack:0.003});
-    osc(880,0.12,'sine',0.12,{attack:0.01});
-    osc(1320,0.16,'sine',0.08,{attack:0.03});
-    setTimeout(()=>osc(1760,0.1,'sine',0.06),60);
+    osc(110,0.12,'sine',0.28,{attack:0.001,slide:-35});
+    osc(660,0.1,'triangle',0.24,{attack:0.002});
+    setTimeout(()=>osc(880,0.1,'triangle',0.22,{attack:0.002}),35);
+    setTimeout(()=>osc(1320,0.12,'sine',0.18,{attack:0.003}),70);
+    setTimeout(()=>osc(1760,0.12,'sine',0.16,{attack:0.003}),110);
+    setTimeout(()=>osc(2200,0.1,'sine',0.12,{attack:0.004}),150);
+    noiseN(0.18,0.09,'bandpass',2200,5);
   },
 
   // Container deposit: satisfying multi-layer success sound

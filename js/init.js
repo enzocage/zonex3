@@ -5,11 +5,12 @@
 // ═══════════════════════════════════════════════════════════════
 function startGame(){
   ea();
-  playJingle('gameStart');
+  playJingle('gameStart',0.25);
   syncLevelIndex();
   score=0;lives=CONF.START_LIVES;zone=1;hiScore=Math.max(hiScore,score);
   zoneScore=0;
   collectedPlu.clear();
+  openedDoors.clear();
   loadLevelByIndex(currentLevelIndex);
   state='playing';
 }

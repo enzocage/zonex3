@@ -170,24 +170,42 @@ function drawTile_slam_door(px,py,c,r,S,g){
 TILE_DRAW[T.SLAM_DOOR] = drawTile_slam_door;
 
 function drawTile_laser_door(px,py,c,r,S,g){
+  // Determine orientation: vertical when walls above+below, else horizontal
+  const wallA=r>0&&map[r-1]&&map[r-1][c]===T.WALL;
+  const wallB=r<ROWS-1&&map[r+1]&&map[r+1][c]===T.WALL;
+  const vertical=wallA&&wallB;
   if(!laserOpen){
     ctx.save();
     const lp=0.75+0.25*Math.sin(g*18);
     ctx.shadowBlur=18*lp;ctx.shadowColor=C.laser;
     ctx.strokeStyle=C.laser;ctx.lineWidth=3.5*lp;
-    ctx.beginPath();ctx.moveTo(px,py+S/2);ctx.lineTo(px+S,py+S/2);ctx.stroke();
-    ctx.strokeStyle='rgba(255,150,100,0.7)';ctx.lineWidth=1;
-    ctx.beginPath();ctx.moveTo(px,py+S/2);ctx.lineTo(px+S,py+S/2);ctx.stroke();
-    ctx.fillStyle='#ff4400';
-    ctx.beginPath();ctx.arc(px+3,py+S/2,4,0,Math.PI*2);ctx.fill();
-    ctx.beginPath();ctx.arc(px+S-3,py+S/2,4,0,Math.PI*2);ctx.fill();
+    if(vertical){
+      ctx.beginPath();ctx.moveTo(px+S/2,py);ctx.lineTo(px+S/2,py+S);ctx.stroke();
+      ctx.strokeStyle='rgba(255,150,100,0.7)';ctx.lineWidth=1;
+      ctx.beginPath();ctx.moveTo(px+S/2,py);ctx.lineTo(px+S/2,py+S);ctx.stroke();
+      ctx.fillStyle='#ff4400';
+      ctx.beginPath();ctx.arc(px+S/2,py+4,4,0,Math.PI*2);ctx.fill();
+      ctx.beginPath();ctx.arc(px+S/2,py+S-4,4,0,Math.PI*2);ctx.fill();
+    } else {
+      ctx.beginPath();ctx.moveTo(px,py+S/2);ctx.lineTo(px+S,py+S/2);ctx.stroke();
+      ctx.strokeStyle='rgba(255,150,100,0.7)';ctx.lineWidth=1;
+      ctx.beginPath();ctx.moveTo(px,py+S/2);ctx.lineTo(px+S,py+S/2);ctx.stroke();
+      ctx.fillStyle='#ff4400';
+      ctx.beginPath();ctx.arc(px+4,py+S/2,4,0,Math.PI*2);ctx.fill();
+      ctx.beginPath();ctx.arc(px+S-4,py+S/2,4,0,Math.PI*2);ctx.fill();
+    }
     ctx.restore();
   } else {
     ctx.strokeStyle='#3a0800';ctx.lineWidth=1;
     ctx.strokeRect(px+4,py+4,S-8,S-8);
     ctx.fillStyle='#1a0400';
-    ctx.beginPath();ctx.arc(px+3,py+S/2,3,0,Math.PI*2);ctx.fill();
-    ctx.beginPath();ctx.arc(px+S-3,py+S/2,3,0,Math.PI*2);ctx.fill();
+    if(vertical){
+      ctx.beginPath();ctx.arc(px+S/2,py+3,3,0,Math.PI*2);ctx.fill();
+      ctx.beginPath();ctx.arc(px+S/2,py+S-3,3,0,Math.PI*2);ctx.fill();
+    } else {
+      ctx.beginPath();ctx.arc(px+3,py+S/2,3,0,Math.PI*2);ctx.fill();
+      ctx.beginPath();ctx.arc(px+S-3,py+S/2,3,0,Math.PI*2);ctx.fill();
+    }
   }
 }
 TILE_DRAW[T.LASER_DOOR] = drawTile_laser_door;
