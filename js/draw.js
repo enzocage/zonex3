@@ -1,5 +1,9 @@
 // === ZONE X - Draw ===
 
+// Preload cover image for title screen
+const coverImg=new Image();
+coverImg.src='content/cover3.jpg';
+
 // ═══════════════════════════════════════════════════════════════
 //  DRAW
 // ═══════════════════════════════════════════════════════════════
@@ -378,77 +382,24 @@ function drawMinimap(){
 //  OVERLAY SCREENS
 // ═══════════════════════════════════════════════════════════════
 function drawTitle(){
-  // Animated mine BG
-  for(let y=0;y<CH;y+=TILE){
-    for(let x=0;x<CW;x+=TILE){
-      const v=Math.sin(glowT*0.3+x*0.025+y*0.04)*0.5+0.5;
-      ctx.fillStyle=`rgb(${v*4|0},${v*18|0},${v*9|0})`;
-      ctx.fillRect(x,y,TILE,TILE);
-    }
+  // Dark background
+  ctx.fillStyle='#000';ctx.fillRect(0,0,CW,CH);
+
+  // Cover image – fitted to full canvas, vertically centered
+  if(coverImg.complete&&coverImg.naturalWidth>0){
+    const iw=coverImg.naturalWidth,ih=coverImg.naturalHeight;
+    const s=Math.min(CW/iw,CH/ih);
+    const dw=iw*s,dh=ih*s;
+    const dx=(CW-dw)/2,dy=(CH-dh)/2;
+    ctx.drawImage(coverImg,dx,dy,dw,dh);
   }
-  // Grid lines
-  ctx.strokeStyle='rgba(0,50,20,0.3)';ctx.lineWidth=1;
-  for(let x=0;x<CW;x+=TILE){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,CH);ctx.stroke();}
-  for(let y=0;y<CH;y+=TILE){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(CW,y);ctx.stroke();}
-  // Scanlines
-  for(let y=0;y<CH;y+=3){ctx.fillStyle='rgba(0,0,0,0.2)';ctx.fillRect(0,y,CW,1);}
 
-  // Title glow layers
-  for(let i=4;i>0;i--){
-    ctx.save();ctx.shadowBlur=50*i;ctx.shadowColor='#00ff88';
-    ctx.fillStyle=`rgba(0,255,136,${0.06/i})`;
-    ctx.font='bold 74px monospace';ctx.textAlign='center';
-    ctx.fillText('ZONE X',CW/2,138);ctx.restore();
-  }
-  ctx.save();ctx.shadowBlur=16;ctx.shadowColor='#00ff88';
-  ctx.fillStyle='#00ff88';ctx.font='bold 74px monospace';ctx.textAlign='center';
-  ctx.fillText('ZONE X',CW/2,138);ctx.restore();
-
-  ctx.save();ctx.shadowBlur=6;ctx.shadowColor='#00aa44';
-  ctx.fillStyle='#00aa44';ctx.font='13px monospace';ctx.textAlign='center';
-  ctx.fillText('☢  N U C L E A R  M I N E S H A F T  ☢',CW/2,165);ctx.restore();
-
-  // Story
-  ctx.fillStyle='#1e3a20';ctx.font='10px monospace';ctx.textAlign='center';
-  ctx.fillText('Saboteurs scattered Plutonium in the mine. Collect it — but the radiation suit',CW/2,195);
-  ctx.fillText('degrades fast. Deposit in Containers for bonuses, then escape through OUT.',CW/2,211);
-
-  // Feature grid
-  const feats=[
-    '☢ Collect & stack Plutonium → combo multipliers',
-    '⛏ Spade breaks crumbly rock walls',
-    '🚃 Conveyor belts push automatically',
-    '🔒 Chests contain hidden items',
-    '📷 Security cameras trigger alarms',
-    '⚡ Electro floors: lethal during alarms',
-    '🌫 Fog of war — explore to reveal',
-    '⊞ Force fields: one-directional only',
-    '⟳ Warp doors — instant teleport',
-    '[X] Emergency drop resets radiation',
-  ];
-  ctx.font='9px monospace';
-  feats.forEach((f,i)=>{
-    ctx.fillStyle=i%2===0?'#1a3a1e':'#152e18';
-    ctx.fillText(f,CW/2-10,240+i*16);
-  });
-
-  // Controls
-  ctx.fillStyle='#0e2510';ctx.font='9px monospace';
-  ctx.fillText('KEYBOARD: ARROWS·MOVE  SPACE·MAT  X·DROP  Z·MAP  F·FOG  ESC·PAUSE',CW/2,410);
-  ctx.fillText('MOBILE: SWIPE·MOVE  2-FINGER·MAT  TAP·START',CW/2,426);
-
-  // Blink start
+  // Blinking start prompt (near bottom, above level-select overlay)
   if(Math.floor(Date.now()/550)%2===0){
     ctx.save();ctx.shadowBlur=14;ctx.shadowColor='#ffff44';
     ctx.fillStyle='#ffff44';ctx.font='bold 18px monospace';ctx.textAlign='center';
-    ctx.fillText('▶  PRESS ENTER / TAP TO START  ◀',CW/2,480);ctx.restore();
+    ctx.fillText('▶  PRESS ENTER / TAP TO START  ◀',CW/2,CH-112);ctx.restore();
   }
-  if(hiScore>0){
-    ctx.fillStyle='#1e4020';ctx.font='11px monospace';
-    ctx.fillText(`HIGH SCORE: ${String(hiScore).padStart(7,'0')}`,CW/2,500);
-  }
-  ctx.fillStyle='#0d1f0f';ctx.font='8px monospace';
-  ctx.fillText('Game by Felix Schmidt  ·  Original game by Derek Johnston 1985 Atari XL',CW/2,520);
 }
 
 function drawDead(){

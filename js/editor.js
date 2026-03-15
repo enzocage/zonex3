@@ -418,7 +418,11 @@ function drawEditor(){
 
   // Hint line
   ctx.fillStyle='#1a3a1a';ctx.font='8px monospace';ctx.textAlign='left';ctx.textBaseline='alphabetic';
-  const aiMsg=ed.aiLastMsg?`AI: ${ed.aiLastMsg.slice(0,60)}`:'LMB paint  RMB erase  ARROWS pan  [G] grid  [E]/[ESC] close';
+  const isTouchDevice=('ontouchstart' in window)||navigator.maxTouchPoints>0;
+  const defaultHint=isTouchDevice
+    ?'Tippen=malen  2Finger=scrollen  Palette=Kachel wählen  [ESC]=schließen'
+    :'LMB paint  RMB erase  ARROWS pan  [G] grid  [E]/[ESC] close';
+  const aiMsg=ed.aiLastMsg?`AI: ${ed.aiLastMsg.slice(0,60)}`:defaultHint;
   ctx.fillStyle=ed.aiLastMsg?'#886600':'#1a3a1a';
   ctx.fillText(aiMsg,6,TBY+ED_TOOL_H-5);
 

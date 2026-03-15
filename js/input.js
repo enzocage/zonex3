@@ -152,6 +152,10 @@ const SWIPE_MIN=CONF.SWIPE_MIN;     // px in canvas-space before direction locks
 const SWIPE_LOCK=CONF.SWIPE_LOCK;   // px to lock in and fire
 const HOLD_REPEAT=CONF.HOLD_REPEAT; // seconds between repeat moves while holding
 let holdTimer=0,holdDx=0,holdDy=0;
+// Editor touch state
+let edTouch={panning:false,x0:0,y0:0,camX0:0,camY0:0};
+let edPanCooldown=0;  // timestamp until which painting is blocked after 2-finger pan
+let edPaintTimer=null; // pending 200 ms safety delay before first paint on map
 
 function touchDir(dx,dy){
   if(Math.abs(dx)>Math.abs(dy)){
@@ -165,9 +169,55 @@ canvas.addEventListener('touchstart',e=>{
   e.preventDefault();
   ea();
 
-  // 2-finger touch → place mat behind player
+  // ── Editor touch ──────────────────────────────────────────────
+  if(editorOn){
+    const rect=canvas.getBoundingClientRect();
+    const pt=e.touches[0];
+    const sx=(pt.clientX-rect.left)/scale;
+    const sy=(pt.clientY-rect.top)/scale;
+    if(e.touches.length>=2){
+      // Two-finger → pan camera; cancel any pending paint and block painting for 500 ms
+      if(edPaintTimer){clearTimeout(edPaintTimer);edPaintTimer=null;}
+      const pt2=e.touches[1];
+      const sx2=(pt2.clientX-rect.left)/scale;
+      const sy2=(pt2.clientY-rect.top)/scale;
+      ed.dragging=false;
+      edPanCooldown=Date.now()+500;
+      edTouch={panning:true,x0:(sx+sx2)/2,y0:(sy+sy2)/2,camX0:ed.camX,camY0:ed.camY};
+    } else {
+      edTouch={panning:false,x0:sx,y0:sy,camX0:ed.camX,camY0:ed.camY};
+      if(Date.now()<edPanCooldown){
+        // still in cooldown after pan — ignore paint actions
+      } else if(edHitBar(sx,sy)){
+        edToolbarClick(sx,sy);
+      } else if(edHitPal(sx,sy)){
+        edPaletteClick(sx,sy);
+      } else if(edHitMap(sx,sy)){
+        [ed.mouseC,ed.mouseR]=edScreenToTile(sx,sy);
+        if(ed.setStartMode){
+          if(ed.mouseC>=0&&ed.mouseC<COLS&&ed.mouseR>=0&&ed.mouseR<ROWS){
+            ed.playerC=ed.mouseC;ed.playerR=ed.mouseR;
+            ed.setStartMode=false;
+          }
+        } else {
+          // 200 ms safety delay: only paint if no second finger appears in time
+          const snapC=ed.mouseC,snapR=ed.mouseR;
+          edPaintTimer=setTimeout(()=>{
+            edPaintTimer=null;
+            if(edTouch.panning)return; // second finger arrived → was a scroll
+            ed.dragging=true;ed.erasing=false;
+            edPaint(snapC,snapR,false);
+          },200);
+        }
+      }
+    }
+    return;
+  }
+
+  // 2-finger touch → place mat behind player (reset touch so no extra move fires)
   if(e.touches.length>=2&&state==='playing'&&!pauseOn){
     placeMatBehind();
+    touch.active=false;holdDx=0;holdDy=0;holdTimer=0;
     return;
   }
 
@@ -187,6 +237,28 @@ canvas.addEventListener('touchstart',e=>{
 
 canvas.addEventListener('touchmove',e=>{
   e.preventDefault();
+  // ── Editor pan/paint ──────────────────────────────────────────
+  if(editorOn){
+    const rect=canvas.getBoundingClientRect();
+    if(edTouch.panning&&e.touches.length>=2){
+      const pt1=e.touches[0],pt2=e.touches[1];
+      const cx=((pt1.clientX+pt2.clientX)/2-rect.left)/scale;
+      const cy=((pt1.clientY+pt2.clientY)/2-rect.top)/scale;
+      const ddx=(edTouch.x0-cx)/ED_TS;
+      const ddy=(edTouch.y0-cy)/ED_TS;
+      ed.camX=Math.max(0,Math.min(COLS-edVW(),edTouch.camX0+Math.round(ddx)));
+      ed.camY=Math.max(0,Math.min(ROWS-edVH(),edTouch.camY0+Math.round(ddy)));
+    } else if(!edTouch.panning&&e.touches.length===1&&Date.now()>=edPanCooldown){
+      const pt=e.touches[0];
+      const sx=(pt.clientX-rect.left)/scale;
+      const sy=(pt.clientY-rect.top)/scale;
+      if(edHitMap(sx,sy)){
+        [ed.mouseC,ed.mouseR]=edScreenToTile(sx,sy);
+        if(ed.dragging&&!ed.setStartMode) edPaint(ed.mouseC,ed.mouseR,false);
+      }
+    }
+    return;
+  }
   if(!touch.active||state!=='playing'||pauseOn)return;
   const pt=e.touches[0];
   const rect=canvas.getBoundingClientRect();
@@ -217,6 +289,15 @@ canvas.addEventListener('touchmove',e=>{
 
 canvas.addEventListener('touchend',e=>{
   e.preventDefault();
+
+  // ── Editor release ────────────────────────────────────────────
+  if(editorOn){
+    if(edPaintTimer){clearTimeout(edPaintTimer);edPaintTimer=null;}
+    ed.dragging=false;
+    edTouch={panning:false,x0:0,y0:0,camX0:0,camY0:0};
+    return;
+  }
+
   const now=Date.now();
   if(!touch.active){touch.active=false;return;}
 
@@ -226,8 +307,21 @@ canvas.addEventListener('touchend',e=>{
 
   if(state==='playing'&&!pauseOn){
     if(!touch.fired && dist<SWIPE_MIN && elapsed<300){
-      // Tap → move toward tapped side
       const cx=touch.x0, cy=touch.y0;
+      // Tap in score area (bottom-left HUD) → open editor
+      if(cy>VIEW_H*TILE && cx<120){
+        editorOn=true;pauseOn=true;
+        if(map.length){
+          if(!ed.map) editorInit();
+          ed.map=map.map(r=>[...r]);
+          ed.playerC=player.c;ed.playerR=player.r;
+          ed.camX=Math.max(0,Math.min(COLS-edVW(),player.c-Math.floor(edVW()/2)));
+          ed.camY=Math.max(0,Math.min(ROWS-edVH(),player.r-Math.floor(edVH()/2)));
+        } else if(!ed.map){editorInit();}
+        touch.active=false;holdDx=0;holdDy=0;holdTimer=0;
+        return;
+      }
+      // Tap → move toward tapped side
       const midX=CW/2, midY=(VIEW_H*TILE)/2;
       const adx=Math.abs(cx-midX), ady=Math.abs(cy-midY);
       if(adx>ady){
