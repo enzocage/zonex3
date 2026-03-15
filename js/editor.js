@@ -28,8 +28,9 @@ const ED_LBL={
 
 // Robot placement tools (negative IDs = not real tiles)
 const ROB_TOOL_NORMAL=-1, ROB_TOOL_FAST=-2, ROB_TOOL_HEAVY=-3;
-const ROB_TOOL_NAMES ={[-1]:'R-Norm',[-2]:'R-Fast',[-3]:'R-Heavy'};
-const ROB_TOOL_COLS  ={[-1]:'#ffcc44',[-2]:'#ff8800',[-3]:'#ff3333'};
+const START_TOOL=-4;
+const ROB_TOOL_NAMES ={[-1]:'R-Norm',[-2]:'R-Fast',[-3]:'R-Heavy',[-4]:'Start'};
+const ROB_TOOL_COLS  ={[-1]:'#ffcc44',[-2]:'#ff8800',[-3]:'#ff3333',[-4]:'#4488ff'};
 const ROB_TOOL_TYPES ={[-1]:'normal',[-2]:'fast',[-3]:'heavy'};
 const ROB_TOOL_SPEEDS={[-1]:1.0,[-2]:1.5,[-3]:0.8};
 
@@ -39,7 +40,7 @@ const ED_PALETTE=[
   T.LASER_DOOR,T.AIR_LOCK,T.WARP_DOOR,T.OUT_DOOR,T.ACID_POOL,
   T.FORCE_FIELD,T.CONVEYOR_R,T.CONVEYOR_L,T.CONVEYOR_U,T.CONVEYOR_D,
   T.CHEST,T.CAMERA_TILE,T.ALARM_LIGHT,T.ELECTRO_FLOOR,
-  ROB_TOOL_NORMAL,ROB_TOOL_FAST,ROB_TOOL_HEAVY,
+  ROB_TOOL_NORMAL,ROB_TOOL_FAST,ROB_TOOL_HEAVY,START_TOOL,
 ];
 const ED_PAL_NAMES={
   [T.FLOOR]:'Floor',[T.WALL]:'Wall',[T.PLUTONIUM]:'Plu',[T.CONTAINER]:'Cont',
@@ -83,6 +84,7 @@ const ROB_TOOL_DESC={
   [-1]:'Normaler Roboter. Patrouilliert auf seiner Achse. Berühren ist tödlich. Kann durch Matten kurz aufgehalten werden.',
   [-2]:'Schneller Roboter. Bewegt sich sehr rasch – kaum Zeit zum Ausweichen. Besonders gefährlich in engen Korridoren.',
   [-3]:'Schwerer Roboter. Tötet auch auf angrenzenden Feldern ohne direkten Kontakt. Langsamer aber mit größerer Gefahrenzone.',
+  [-4]:'Spieler-Startposition. Legt fest, wo der Spieler das Level beginnt. Kann beliebig neu gesetzt werden – immer nur eine Position gleichzeitig.',
 };
 
 // Sidebar widths/heights
@@ -100,18 +102,33 @@ let ed={
   name:'custom',
   playerC:2,playerR:2,
   showGrid:true,
-  setStartMode:false,
+  zoom:1.0,
   aiDifficulty:5,
   aiGenerating:false,
   aiLastMsg:'',
   hovPalIdx:-1,
   warpPairs:[],      // manually placed warp pairs [{from:{c,r},to:{c,r}}]
   warpFirst:null,    // {c,r} of first warp placed, awaiting partner
+  closeConfirm:false,// true while "Are you sure?" dialog is shown
 };
 
 function edMapW(){ return CW-ED_PAL_W; }
-function edVW(){   return Math.floor(edMapW()/ED_TS); }
-function edVH(){   return Math.floor((CH-ED_TOOL_H)/ED_TS); }
+function edTileSize(){ return Math.max(4, Math.round(ED_TS * ed.zoom)); }
+function edVW(){   return Math.floor(edMapW()/edTileSize()); }
+function edVH(){   return Math.floor((CH-ED_TOOL_H)/edTileSize()); }
+function edFitZoom(){ return Math.min(edMapW()/(COLS*ED_TS),(CH-ED_TOOL_H)/(ROWS*ED_TS)); }
+function edClampCam(){
+  ed.camX=Math.max(0,Math.min(Math.max(0,COLS-edVW()),Math.round(ed.camX)));
+  ed.camY=Math.max(0,Math.min(Math.max(0,ROWS-edVH()),Math.round(ed.camY)));
+}
+function edZoomIn(){
+  ed.zoom=Math.min(4.0,Math.round((ed.zoom+0.25)*100)/100);
+  edClampCam();
+}
+function edZoomOut(){
+  ed.zoom=Math.max(edFitZoom(),Math.round((ed.zoom-0.25)*100)/100);
+  edClampCam();
+}
 
 function editorInit(){
   ed.map=[];
@@ -121,11 +138,20 @@ function editorInit(){
       ed.map[r][c]=(r===0||r===ROWS-1||c===0||c===COLS-1)?T.WALL:T.FLOOR;
   }
   ed.camX=0;ed.camY=0;ed.playerC=2;ed.playerR=2;ed.robots=[];
-  ed.warpPairs=[];ed.warpFirst=null;
+  ed.warpPairs=[];ed.warpFirst=null;ed.zoom=1.0;
+}
+
+function edCloseEditor(){
+  editorOn=false;pauseOn=false;ed.closeConfirm=false;
 }
 
 function onEditorKey(code){
-  if(code==='Escape'||code==='KeyE'){ editorOn=false;pauseOn=false;return; }
+  if(ed.closeConfirm){
+    if(code==='Enter'||code==='KeyY') edCloseEditor();
+    if(code==='Escape'||code==='KeyN') ed.closeConfirm=false;
+    return;
+  }
+  if(code==='Escape'||code==='KeyE'){ ed.closeConfirm=true;return; }
   if(code==='KeyG') ed.showGrid=!ed.showGrid;
   const PAN=3;
   if(code==='ArrowLeft'||code==='KeyA')  ed.camX=Math.max(0,ed.camX-PAN);
@@ -159,69 +185,70 @@ function drawEditor(){
   ctx.save();
   ctx.beginPath();ctx.rect(0,0,MW,MH);ctx.clip();
 
+  const ts=edTileSize();
   const vw=edVW()+1, vh=edVH()+1;
   for(let r=0;r<vh;r++){
     for(let c=0;c<vw;c++){
       const mc=c+ed.camX,mr=r+ed.camY;
       if(mc<0||mr<0||mc>=COLS||mr>=ROWS)continue;
       const t=ed.map[mr][mc];
-      const px=c*ED_TS,py=r*ED_TS;
-      // Render actual tile appearance scaled to ED_TS
+      const px=c*ts,py=r*ts;
+      // Render actual tile appearance scaled to ts
       ctx.save();
-      ctx.beginPath();ctx.rect(px,py,ED_TS,ED_TS);ctx.clip();
+      ctx.beginPath();ctx.rect(px,py,ts,ts);ctx.clip();
       ctx.translate(px,py);
-      ctx.scale(ED_TS/TILE,ED_TS/TILE);
+      ctx.scale(ts/TILE,ts/TILE);
       drawTile(t,0,0,mc,mr);
       ctx.restore();
       // grid
       if(ed.showGrid){
         ctx.strokeStyle='rgba(0,80,20,0.45)';ctx.lineWidth=0.5;
-        ctx.strokeRect(px,py,ED_TS,ED_TS);
+        ctx.strokeRect(px,py,ts,ts);
       }
     }
   }
 
   // Player start marker
-  const psx=(ed.playerC-ed.camX)*ED_TS,psy=(ed.playerR-ed.camY)*ED_TS;
+  const psx=(ed.playerC-ed.camX)*ts,psy=(ed.playerR-ed.camY)*ts;
   if(psx>=0&&psy>=0&&psx<MW&&psy<MH){
     ctx.save();ctx.shadowBlur=8;ctx.shadowColor=C.pl;
-    ctx.fillStyle='rgba(0,80,200,0.55)';ctx.fillRect(psx,psy,ED_TS,ED_TS);
-    ctx.fillStyle=C.pl;ctx.font=`bold ${ED_TS-4}px monospace`;
+    ctx.fillStyle='rgba(0,80,200,0.55)';ctx.fillRect(psx,psy,ts,ts);
+    ctx.fillStyle=C.pl;ctx.font=`bold ${Math.max(6,ts-4)}px monospace`;
     ctx.textAlign='center';ctx.textBaseline='middle';
-    ctx.fillText('P',psx+ED_TS/2,psy+ED_TS/2+1);ctx.restore();
+    ctx.fillText('P',psx+ts/2,psy+ts/2+1);ctx.restore();
   }
 
   // Placed robots
   for(const rob of ed.robots){
-    const rx=(rob.c-ed.camX)*ED_TS,ry=(rob.r-ed.camY)*ED_TS;
-    if(rx<-ED_TS||ry<-ED_TS||rx>=MW||ry>=MH)continue;
+    const rx=(rob.c-ed.camX)*ts,ry=(rob.r-ed.camY)*ts;
+    if(rx<-ts||ry<-ts||rx>=MW||ry>=MH)continue;
     const rc=ROB_TOOL_COLS[rob._tool]||'#ffcc44';
     ctx.save();
     ctx.shadowBlur=6;ctx.shadowColor=rc;
-    ctx.fillStyle=rc+'44';ctx.fillRect(rx,ry,ED_TS,ED_TS);
-    ctx.strokeStyle=rc;ctx.lineWidth=1.5;ctx.strokeRect(rx+1,ry+1,ED_TS-2,ED_TS-2);
-    ctx.fillStyle=rc;ctx.font=`bold ${ED_TS-5}px monospace`;
+    ctx.fillStyle=rc+'44';ctx.fillRect(rx,ry,ts,ts);
+    ctx.strokeStyle=rc;ctx.lineWidth=1.5;ctx.strokeRect(rx+1,ry+1,ts-2,ts-2);
+    ctx.fillStyle=rc;ctx.font=`bold ${Math.max(5,ts-5)}px monospace`;
     ctx.textAlign='center';ctx.textBaseline='middle';
-    ctx.fillText('R',rx+ED_TS/2,ry+ED_TS/2+1);
+    ctx.fillText('R',rx+ts/2,ry+ts/2+1);
     ctx.restore();
   }
 
   // Warp pair connector lines
   ctx.save();
   for(const wp of (ed.warpPairs||[])){
-    const ax=(wp.from.c-ed.camX)*ED_TS+ED_TS/2, ay=(wp.from.r-ed.camY)*ED_TS+ED_TS/2;
-    const bx=(wp.to.c  -ed.camX)*ED_TS+ED_TS/2, by=(wp.to.r  -ed.camY)*ED_TS+ED_TS/2;
+    const ax=(wp.from.c-ed.camX)*ts+ts/2, ay=(wp.from.r-ed.camY)*ts+ts/2;
+    const bx=(wp.to.c  -ed.camX)*ts+ts/2, by=(wp.to.r  -ed.camY)*ts+ts/2;
     ctx.strokeStyle='rgba(180,80,255,0.7)';ctx.lineWidth=1.5;
     ctx.setLineDash([4,3]);ctx.beginPath();ctx.moveTo(ax,ay);ctx.lineTo(bx,by);ctx.stroke();
     ctx.setLineDash([]);
   }
   // Pending first warp highlight
   if(ed.warpFirst){
-    const wx=(ed.warpFirst.c-ed.camX)*ED_TS,wy=(ed.warpFirst.r-ed.camY)*ED_TS;
+    const wx=(ed.warpFirst.c-ed.camX)*ts,wy=(ed.warpFirst.r-ed.camY)*ts;
     const pulse=0.5+0.5*Math.sin(Date.now()*0.007);
     ctx.strokeStyle=`rgba(255,100,255,${0.6+0.4*pulse})`;ctx.lineWidth=2.5;
-    ctx.strokeRect(wx+1,wy+1,ED_TS-2,ED_TS-2);
-    ctx.fillStyle=`rgba(180,0,255,${0.18*pulse})`;ctx.fillRect(wx,wy,ED_TS,ED_TS);
+    ctx.strokeRect(wx+1,wy+1,ts-2,ts-2);
+    ctx.fillStyle=`rgba(180,0,255,${0.18*pulse})`;ctx.fillRect(wx,wy,ts,ts);
   }
   ctx.restore();
 
@@ -236,28 +263,28 @@ function drawEditor(){
 
   // Hover cursor
   if(ed.mouseC>=0&&ed.mouseC<COLS&&ed.mouseR>=0&&ed.mouseR<ROWS){
-    const hx=(ed.mouseC-ed.camX)*ED_TS,hy=(ed.mouseR-ed.camY)*ED_TS;
+    const hx=(ed.mouseC-ed.camX)*ts,hy=(ed.mouseR-ed.camY)*ts;
     ctx.save();
     // tile preview at 50% alpha
-    if(!ed.erasing&&!ed.setStartMode){
+    if(!ed.erasing){
       if(ed.selTile<0){
         const rc=ROB_TOOL_COLS[ed.selTile];
         ctx.globalAlpha=0.6;
-        ctx.fillStyle=rc+'44';ctx.fillRect(hx,hy,ED_TS,ED_TS);
-        ctx.fillStyle=rc;ctx.font=`bold ${ED_TS-5}px monospace`;
+        ctx.fillStyle=rc+'44';ctx.fillRect(hx,hy,ts,ts);
+        ctx.fillStyle=rc;ctx.font=`bold ${Math.max(5,ts-5)}px monospace`;
         ctx.textAlign='center';ctx.textBaseline='middle';
-        ctx.fillText('R',hx+ED_TS/2,hy+ED_TS/2+1);
+        ctx.fillText(ed.selTile===START_TOOL?'S':'R',hx+ts/2,hy+ts/2+1);
       } else {
         ctx.globalAlpha=0.55;
-        ctx.beginPath();ctx.rect(hx,hy,ED_TS,ED_TS);ctx.clip();
-        ctx.translate(hx,hy);ctx.scale(ED_TS/TILE,ED_TS/TILE);
+        ctx.beginPath();ctx.rect(hx,hy,ts,ts);ctx.clip();
+        ctx.translate(hx,hy);ctx.scale(ts/TILE,ts/TILE);
         drawTile(ed.selTile,0,0,ed.mouseC,ed.mouseR);
       }
     }
     ctx.restore();
     ctx.save();
-    ctx.strokeStyle=ed.erasing?'#ff4422':ed.setStartMode?'#4488ff':'#00ff88';
-    ctx.lineWidth=2;ctx.strokeRect(hx+1,hy+1,ED_TS-2,ED_TS-2);
+    ctx.strokeStyle=ed.erasing?'#ff4422':(ed.selTile===START_TOOL)?'#4488ff':'#00ff88';
+    ctx.lineWidth=2;ctx.strokeRect(hx+1,hy+1,ts-2,ts-2);
     ctx.restore();
   }
   ctx.restore();
@@ -292,7 +319,7 @@ function drawEditor(){
     const iconY=cellY;
     // dark bg
     ctx.fillStyle='#040f06';ctx.fillRect(iconX,iconY,PAL_ICO,PAL_ICO);
-    // draw tile icon — robot tools use custom glyph
+    // draw tile icon — robot tools and special tools use custom glyph
     if(tid<0){
       const rc=ROB_TOOL_COLS[tid];
       ctx.save();
@@ -300,7 +327,7 @@ function drawEditor(){
       ctx.shadowBlur=8;ctx.shadowColor=rc;
       ctx.fillStyle=rc;ctx.font=`bold ${PAL_ICO-6}px monospace`;
       ctx.textAlign='center';ctx.textBaseline='middle';
-      ctx.fillText('R',iconX+PAL_ICO/2,iconY+PAL_ICO/2+1);
+      ctx.fillText(tid===START_TOOL?'S':'R',iconX+PAL_ICO/2,iconY+PAL_ICO/2+1);
       ctx.restore();
     } else {
       ctx.save();
@@ -328,13 +355,13 @@ function drawEditor(){
 
   // Mode indicator in sidebar
   const modeY=32+Math.ceil(ED_PALETTE.length/palCols)*(palRowH+4)+10;
-  if(ed.setStartMode){
-    ctx.fillStyle='#2244ff';ctx.font='bold 9px monospace';ctx.textAlign='center';
-    ctx.fillText('>> CLICK START <<',PX+ED_PAL_W/2,modeY);
-    ctx.fillStyle='rgba(20,40,200,0.4)';
+  if(ed.selTile===START_TOOL){
+    ctx.fillStyle='#4488ff';ctx.font='bold 9px monospace';ctx.textAlign='center';
+    ctx.fillText('>> START SETZEN <<',PX+ED_PAL_W/2,modeY);
+    ctx.fillStyle='rgba(20,40,180,0.35)';
     ctx.fillRect(PX+4,modeY+4,ED_PAL_W-8,18);
     ctx.fillStyle='#88aaff';ctx.font='8px monospace';
-    ctx.fillText('Click map = Player start',PX+ED_PAL_W/2,modeY+15);
+    ctx.fillText('Klick = Startposition',PX+ED_PAL_W/2,modeY+15);
   }
 
   // Coords display
@@ -370,7 +397,13 @@ function drawEditor(){
   edBtn('LOAD',bx,46,false);         bx+=50;
   edBtn('SAVE JSON',bx,70,false);    bx+=74;
   edBtn('PLAY',bx,44,false,'#003300'); bx+=48;
-  edBtn('SET START',bx,68,ed.setStartMode,'#001a44'); bx+=72;
+  // Zoom stepper (replaces SET START button, same total width 72px)
+  const zmX=bx;
+  edBtn('Z\u2212',bx,32,false,'#001a14'); bx+=36;
+  edBtn('Z+',bx,32,false,'#001a14'); bx+=36;
+  ctx.fillStyle='rgba(0,170,50,0.5)';ctx.font='6px monospace';
+  ctx.textAlign='center';ctx.textBaseline='alphabetic';
+  ctx.fillText('ZOOM '+Math.round(ed.zoom*100)+'%',zmX+34,BY+BH+10);
   edBtn('[G]GRID',bx,56,ed.showGrid); bx+=60;
 
   // ── AI Generator section ──────────────────────────────────────
@@ -421,8 +454,8 @@ function drawEditor(){
   ctx.fillStyle='#1a3a1a';ctx.font='8px monospace';ctx.textAlign='left';ctx.textBaseline='alphabetic';
   const isTouchDevice=('ontouchstart' in window)||navigator.maxTouchPoints>0;
   const defaultHint=isTouchDevice
-    ?'Tippen=malen  2Finger=scrollen  Palette=Kachel wählen  [ESC]=schließen'
-    :'LMB paint  RMB erase  ARROWS pan  [G] grid  [E]/[ESC] close';
+    ?'Tippen=malen  2Finger=Pinch-Zoom  Palette=Kachel wählen  [ESC]=schließen'
+    :'LMB paint  RMB erase  ARROWS pan  Ctrl+Scroll zoom  [G] grid  [E]/[ESC] close';
   const aiMsg=ed.aiLastMsg?`AI: ${ed.aiLastMsg.slice(0,60)}`:defaultHint;
   ctx.fillStyle=ed.aiLastMsg?'#886600':'#1a3a1a';
   ctx.fillText(aiMsg,6,TBY+ED_TOOL_H-5);
@@ -466,7 +499,7 @@ function drawEditor(){
       ctx.shadowBlur=14;ctx.shadowColor=rc;
       ctx.fillStyle=rc;ctx.font='bold 42px monospace';
       ctx.textAlign='center';ctx.textBaseline='middle';
-      ctx.fillText('R',icoX+ICO3/2,icoY+ICO3/2+1);
+      ctx.fillText(htid===START_TOOL?'S':'R',icoX+ICO3/2,icoY+ICO3/2+1);
     } else {
       ctx.translate(icoX,icoY);
       ctx.scale(ICO3/TILE,ICO3/TILE);
@@ -493,6 +526,35 @@ function drawEditor(){
       dy+=DESC_LH;
     }
   }
+
+  // ── Close-confirmation dialog ──────────────────────────────────
+  if(ed.closeConfirm){
+    const DW=260,DH=90;
+    const DX=Math.round((CW-DW)/2),DY=Math.round((CH-DH)/2);
+    // Backdrop
+    ctx.fillStyle='rgba(0,0,0,0.6)';ctx.fillRect(0,0,CW,CH);
+    // Box
+    ctx.fillStyle='#010e05';ctx.fillRect(DX,DY,DW,DH);
+    ctx.strokeStyle='#00ff88';ctx.lineWidth=1.5;ctx.strokeRect(DX+0.5,DY+0.5,DW-1,DH-1);
+    // Text
+    ctx.fillStyle='#00ff88';ctx.font='bold 13px monospace';
+    ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText('Are you sure?',DX+DW/2,DY+22);
+    ctx.fillStyle='rgba(160,230,160,0.7)';ctx.font='9px monospace';
+    ctx.fillText('Unsaved changes will be lost.',DX+DW/2,DY+38);
+    // YES button
+    const BW=80,BH=24,BY2=DY+DH-32;
+    const yesX=DX+DW/2-BW-8, noX=DX+DW/2+8;
+    ctx.fillStyle='#003a14';ctx.fillRect(yesX,BY2,BW,BH);
+    ctx.strokeStyle='#00ff88';ctx.lineWidth=1;ctx.strokeRect(yesX,BY2,BW,BH);
+    ctx.fillStyle='#00ff88';ctx.font='bold 10px monospace';
+    ctx.fillText('YES',yesX+BW/2,BY2+BH/2);
+    // NO button
+    ctx.fillStyle='#1a0000';ctx.fillRect(noX,BY2,BW,BH);
+    ctx.strokeStyle='#ff4444';ctx.lineWidth=1;ctx.strokeRect(noX,BY2,BW,BH);
+    ctx.fillStyle='#ff4444';
+    ctx.fillText('NO',noX+BW/2,BY2+BH/2);
+  }
 }
 
 // ── Editor input ─────────────────────────────────────────────────
@@ -505,7 +567,8 @@ function edHitPal(sx,sy){ return sx>=edMapW()&&sy<CH-ED_TOOL_H; }
 function edHitBar(sx,sy){ return sy>=CH-ED_TOOL_H; }
 
 function edScreenToTile(sx,sy){
-  return [Math.floor(sx/ED_TS)+ed.camX, Math.floor(sy/ED_TS)+ed.camY];
+  const ts=edTileSize();
+  return [Math.floor(sx/ts)+ed.camX, Math.floor(sy/ts)+ed.camY];
 }
 
 canvas.addEventListener('mousemove',e=>{
@@ -546,6 +609,16 @@ canvas.addEventListener('mousedown',e=>{
   e.preventDefault();
   const [sx,sy]=edMousePos(e);
 
+  // Confirm-dialog intercepts all clicks
+  if(ed.closeConfirm){
+    const DW=260,DH=90,DX=Math.round((CW-DW)/2),DY=Math.round((CH-DH)/2);
+    const BW=80,BH=24,BY2=DY+DH-32;
+    const yesX=DX+DW/2-BW-8,noX=DX+DW/2+8;
+    if(sx>=yesX&&sx<=yesX+BW&&sy>=BY2&&sy<=BY2+BH){edCloseEditor();return;}
+    if(sx>=noX &&sx<=noX+BW &&sy>=BY2&&sy<=BY2+BH){ed.closeConfirm=false;return;}
+    return; // click outside buttons → do nothing
+  }
+
   if(edHitBar(sx,sy)){
     edToolbarClick(sx,sy);return;
   }
@@ -554,13 +627,6 @@ canvas.addEventListener('mousedown',e=>{
   }
   if(edHitMap(sx,sy)){
     [ed.mouseC,ed.mouseR]=edScreenToTile(sx,sy);
-    if(ed.setStartMode){
-      if(ed.mouseC>=0&&ed.mouseC<COLS&&ed.mouseR>=0&&ed.mouseR<ROWS){
-        ed.playerC=ed.mouseC;ed.playerR=ed.mouseR;
-        ed.setStartMode=false;
-      }
-      return;
-    }
     ed.dragging=true;ed.erasing=(e.button===2);
     edPaint(ed.mouseC,ed.mouseR,ed.erasing);
   }
@@ -568,11 +634,21 @@ canvas.addEventListener('mousedown',e=>{
 canvas.addEventListener('mouseup',()=>{ed.dragging=false;});
 canvas.addEventListener('contextmenu',e=>{if(editorOn)e.preventDefault();});
 
-// Mouse wheel: scroll editor camera
+// Mouse wheel: scroll editor camera (Ctrl+wheel = zoom)
 canvas.addEventListener('wheel',e=>{
   if(!editorOn)return;
   e.preventDefault();
-  if(Math.abs(e.deltaX)>Math.abs(e.deltaY)){
+  if(e.ctrlKey||e.metaKey){
+    // Zoom centered on mouse position
+    const [sx,sy]=edMousePos(e);
+    const ts0=edTileSize();
+    const tileX=sx/ts0+ed.camX, tileY=sy/ts0+ed.camY;
+    if(e.deltaY<0) edZoomIn(); else edZoomOut();
+    // Re-center on mouse tile after zoom
+    const ts1=edTileSize();
+    ed.camX=Math.max(0,Math.min(Math.max(0,COLS-edVW()),tileX-sx/ts1));
+    ed.camY=Math.max(0,Math.min(Math.max(0,ROWS-edVH()),tileY-sy/ts1));
+  } else if(Math.abs(e.deltaX)>Math.abs(e.deltaY)){
     ed.camX=Math.max(0,Math.min(COLS-edVW(),ed.camX+Math.sign(e.deltaX)*2));
   } else {
     ed.camY=Math.max(0,Math.min(ROWS-edVH(),ed.camY+Math.sign(e.deltaY)*2));
@@ -609,7 +685,8 @@ function edToolbarClick(sx,sy){
     if(sx>=bx&&sx<=bx+46){editorLoad();return;} bx+=50;
     if(sx>=bx&&sx<=bx+70){editorSave();return;} bx+=74;
     if(sx>=bx&&sx<=bx+44){editorPlay();return;} bx+=48;
-    if(sx>=bx&&sx<=bx+68){ed.setStartMode=!ed.setStartMode;return;} bx+=72;
+    if(sx>=bx&&sx<=bx+32){edZoomOut();return;} bx+=36;  // Z−
+    if(sx>=bx&&sx<=bx+32){edZoomIn();return;} bx+=36;  // Z+
     if(sx>=bx&&sx<=bx+56){ed.showGrid=!ed.showGrid;return;} bx+=60;
     // AI section
     const aiX=bx+4;
@@ -623,8 +700,8 @@ function edToolbarClick(sx,sy){
     }
     // Undo
     if(sx>=CW-140&&sx<CW-84){ edUndo();return; }
-    // Close
-    if(sx>=CW-84&&sx<=CW){ editorOn=false;pauseOn=false;return; }
+    // Close → show confirm
+    if(sx>=CW-84&&sx<=CW){ ed.closeConfirm=true;return; }
   }
 }
 
@@ -641,12 +718,19 @@ function edUndo(){
 
 function edPaint(c,r,erase){
   if(!ed.map||c<0||r<0||c>=COLS||r>=ROWS)return;
+  if(ed.selTile===START_TOOL){
+    if(!erase){ed.playerC=c;ed.playerR=r;}
+    return;
+  }
   if(ed.selTile<0){
     // Robot tool: place or remove
     ed.robots=ed.robots.filter(rob=>!(rob.c===c&&rob.r===r));
     if(!erase) ed.robots.push({c,r,type:ROB_TOOL_TYPES[ed.selTile],axis:'h',range:4,speed:ROB_TOOL_SPEEDS[ed.selTile],_tool:ed.selTile});
     return;
   }
+  // Skip if tile is already the target value
+  const targetTile=erase?T.FLOOR:ed.selTile;
+  if(ed.map[r][c]===targetTile)return;
   // Push undo entry before changing tile
   const prev=ed.map[r][c];
   if(edUndoStack.length>=ED_UNDO_MAX)edUndoStack.shift();
@@ -682,7 +766,7 @@ function editorNew(){
       ed.map[r][c]=(r===0||r===ROWS-1||c===0||c===COLS-1)?T.WALL:T.FLOOR;
   }
   ed.playerC=2;ed.playerR=2;ed.camX=0;ed.camY=0;ed.robots=[];
-  ed.warpPairs=[];ed.warpFirst=null;
+  ed.warpPairs=[];ed.warpFirst=null;ed.zoom=1.0;
 }
 
 function editorSave(){
@@ -694,7 +778,15 @@ function editorSave(){
     robots:ed.robots.map(rob=>({c:rob.c,r:rob.r,type:rob.type,axis:rob.axis,range:rob.range,speed:rob.speed})),
     warpPairs:(ed.warpPairs||[]).map(wp=>({from:{...wp.from},to:{...wp.to}})),
   };
-  const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+  const json=JSON.stringify(data,null,2);
+  // Save to localStorage
+  try{
+    localStorage.setItem('gespeichertesLevel',json);
+    ed.aiLastMsg='Level lokal gespeichert!';
+    setTimeout(()=>{if(ed.aiLastMsg==='Level lokal gespeichert!')ed.aiLastMsg='';},3000);
+  }catch(e){console.warn('localStorage save failed:',e);}
+  // Download JSON file
+  const blob=new Blob([json],{type:'application/json'});
   const url=URL.createObjectURL(blob);
   const a=document.createElement('a');
   a.href=url;a.download=`zonex_${ed.name||'level'}.json`;

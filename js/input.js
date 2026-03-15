@@ -153,7 +153,7 @@ const SWIPE_LOCK=CONF.SWIPE_LOCK;   // px to lock in and fire
 const HOLD_REPEAT=CONF.HOLD_REPEAT; // seconds between repeat moves while holding
 let holdTimer=0,holdDx=0,holdDy=0;
 // Editor touch state
-let edTouch={panning:false,x0:0,y0:0,camX0:0,camY0:0};
+let edTouch={panning:false,x0:0,y0:0,camX0:0,camY0:0,pinchDist0:0,zoom0:1,midTileX:0,midTileY:0};
 let edPanCooldown=0;  // timestamp until which painting is blocked after 2-finger pan
 let edPaintTimer=null; // pending 200 ms safety delay before first paint on map
 
@@ -176,7 +176,7 @@ canvas.addEventListener('touchstart',e=>{
     const sx=(pt.clientX-rect.left)/scale;
     const sy=(pt.clientY-rect.top)/scale;
     if(e.touches.length>=2){
-      // Two-finger → pan camera; cancel any pending paint and block painting for 500 ms
+      // Two-finger → pinch-to-zoom + pan; cancel any pending paint and block painting for 500 ms
       if(edPaintTimer){clearTimeout(edPaintTimer);edPaintTimer=null;}
       // Undo last paint if it happened within the last 500 ms
       const _last=edUndoStack[edUndoStack.length-1];
@@ -184,11 +184,31 @@ canvas.addEventListener('touchstart',e=>{
       const pt2=e.touches[1];
       const sx2=(pt2.clientX-rect.left)/scale;
       const sy2=(pt2.clientY-rect.top)/scale;
+      const midX=(sx+sx2)/2, midY=(sy+sy2)/2;
+      const pinchDist=Math.sqrt((sx2-sx)**2+(sy2-sy)**2);
+      const ts=edTileSize();
       ed.dragging=false;
       edPanCooldown=Date.now()+500;
-      edTouch={panning:true,x0:(sx+sx2)/2,y0:(sy+sy2)/2,camX0:ed.camX,camY0:ed.camY};
+      edTouch={
+        panning:true,
+        x0:midX,y0:midY,
+        camX0:ed.camX,camY0:ed.camY,
+        pinchDist0:Math.max(1,pinchDist),
+        zoom0:ed.zoom,
+        midTileX:midX/ts+ed.camX,
+        midTileY:midY/ts+ed.camY,
+      };
     } else {
       edTouch={panning:false,x0:sx,y0:sy,camX0:ed.camX,camY0:ed.camY};
+      // Confirm-dialog intercepts all single-finger taps
+      if(ed.closeConfirm){
+        const DW=260,DH=90,DX=Math.round((CW-DW)/2),DY=Math.round((CH-DH)/2);
+        const BW=80,BH=24,BY2=DY+DH-32;
+        const yesX=DX+DW/2-BW-8,noX=DX+DW/2+8;
+        if(sx>=yesX&&sx<=yesX+BW&&sy>=BY2&&sy<=BY2+BH){edCloseEditor();}
+        else if(sx>=noX&&sx<=noX+BW&&sy>=BY2&&sy<=BY2+BH){ed.closeConfirm=false;}
+        return;
+      }
       if(Date.now()<edPanCooldown){
         // still in cooldown after pan — ignore paint actions
       } else if(edHitBar(sx,sy)){
@@ -197,21 +217,14 @@ canvas.addEventListener('touchstart',e=>{
         edPaletteClick(sx,sy);
       } else if(edHitMap(sx,sy)){
         [ed.mouseC,ed.mouseR]=edScreenToTile(sx,sy);
-        if(ed.setStartMode){
-          if(ed.mouseC>=0&&ed.mouseC<COLS&&ed.mouseR>=0&&ed.mouseR<ROWS){
-            ed.playerC=ed.mouseC;ed.playerR=ed.mouseR;
-            ed.setStartMode=false;
-          }
-        } else {
-          // 200 ms safety delay: only paint if no second finger appears in time
-          const snapC=ed.mouseC,snapR=ed.mouseR;
-          edPaintTimer=setTimeout(()=>{
-            edPaintTimer=null;
-            if(edTouch.panning)return; // second finger arrived → was a scroll
-            ed.dragging=true;ed.erasing=false;
-            edPaint(snapC,snapR,false);
-          },2);
-        }
+        // 200 ms safety delay: only paint if no second finger appears in time
+        const snapC=ed.mouseC,snapR=ed.mouseR;
+        edPaintTimer=setTimeout(()=>{
+          edPaintTimer=null;
+          if(edTouch.panning)return; // second finger arrived → was a scroll
+          ed.dragging=true;ed.erasing=false;
+          edPaint(snapC,snapR,false);
+        },2);
       }
     }
     return;
@@ -245,19 +258,24 @@ canvas.addEventListener('touchmove',e=>{
     const rect=canvas.getBoundingClientRect();
     if(edTouch.panning&&e.touches.length>=2){
       const pt1=e.touches[0],pt2=e.touches[1];
-      const cx=((pt1.clientX+pt2.clientX)/2-rect.left)/scale;
-      const cy=((pt1.clientY+pt2.clientY)/2-rect.top)/scale;
-      const ddx=(edTouch.x0-cx)/ED_TS;
-      const ddy=(edTouch.y0-cy)/ED_TS;
-      ed.camX=Math.max(0,Math.min(COLS-edVW(),edTouch.camX0+Math.round(ddx)));
-      ed.camY=Math.max(0,Math.min(ROWS-edVH(),edTouch.camY0+Math.round(ddy)));
+      const cx1=(pt1.clientX-rect.left)/scale, cy1=(pt1.clientY-rect.top)/scale;
+      const cx2=(pt2.clientX-rect.left)/scale, cy2=(pt2.clientY-rect.top)/scale;
+      const cx=(cx1+cx2)/2, cy=(cy1+cy2)/2;
+      const dist=Math.sqrt((cx2-cx1)**2+(cy2-cy1)**2);
+      // Update zoom from pinch distance ratio
+      const newZoom=Math.max(edFitZoom(),Math.min(4.0,edTouch.zoom0*(dist/edTouch.pinchDist0)));
+      ed.zoom=newZoom;
+      // Pan: keep initial midpoint tile fixed at current finger midpoint (round to int)
+      const ts=edTileSize();
+      ed.camX=Math.max(0,Math.min(Math.max(0,COLS-edVW()),Math.round(edTouch.midTileX-cx/ts)));
+      ed.camY=Math.max(0,Math.min(Math.max(0,ROWS-edVH()),Math.round(edTouch.midTileY-cy/ts)));
     } else if(!edTouch.panning&&e.touches.length===1&&Date.now()>=edPanCooldown){
       const pt=e.touches[0];
       const sx=(pt.clientX-rect.left)/scale;
       const sy=(pt.clientY-rect.top)/scale;
       if(edHitMap(sx,sy)){
         [ed.mouseC,ed.mouseR]=edScreenToTile(sx,sy);
-        if(ed.dragging&&!ed.setStartMode) edPaint(ed.mouseC,ed.mouseR,false);
+        if(ed.dragging) edPaint(ed.mouseC,ed.mouseR,false);
       }
     }
     return;
