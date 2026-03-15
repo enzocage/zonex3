@@ -6,10 +6,11 @@ let currentLevelIndex = 1;
 let levelCount = AVAILABLE_LEVELS.length;
 
 // Global fallback-Arrays – werden durch loadDefaultLevel() aus ZONE_LEVELS[1] befüllt
-let MAP_BASE   = [];
-let WARP_PAIRS = [];
-let ROBOT_DEFS = [];
-let CAM_DEFS   = [];
+let MAP_BASE    = [];
+let WARP_PAIRS  = [];
+let ROBOT_DEFS  = [];
+let CAM_DEFS    = [];
+let PLAYER_START = {c:2, r:2};
 
 function buildLevelDropdown() {
   const sel = document.getElementById('levelSelect');
@@ -80,11 +81,14 @@ function applyLevelData(data) {
 
   const sc = (data.playerStart && data.playerStart.c != null) ? data.playerStart.c : 2;
   const sr = (data.playerStart && data.playerStart.r != null) ? data.playerStart.r : 2;
+  PLAYER_START = {c:sc, r:sr};
   player = {c:sc, r:sr, facing:0, animT:0,
             px:sc*TILE, py:sr*TILE, tx:sc*TILE, ty:sr*TILE,
             moving:false, moveProgress:1.0, nextDx:0, nextDy:0, hasPending:false};
 
   const robDefs = (data.robots && data.robots.length > 0) ? data.robots : ROBOT_DEFS;
+  ROBOT_DEFS = robDefs;
+  MAP_BASE = map.map(r => [...r]);
   robots = robDefs.map((d, i) => ({
     c:d.c, r:d.r, px:d.c*TILE, py:d.r*TILE, tx:d.c*TILE, ty:d.r*TILE,
     moveProgress:1.0, prevC:d.c, prevR:d.r,
@@ -94,6 +98,7 @@ function applyLevelData(data) {
   }));
 
   const camDefs = (data.cameras && data.cameras.length > 0) ? data.cameras : CAM_DEFS;
+  CAM_DEFS = camDefs;
   cameras = camDefs.map(d => ({
     c:d.c, r:d.r, range:d.range||5,
     angleStart:d.angleStart||0, angleSweep:d.angleSweep||(Math.PI*0.7),

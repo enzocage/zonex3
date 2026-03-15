@@ -90,11 +90,11 @@ function update(dt){
       }
     }
   }
-  // Robots
+  // Robots – kontinuierliche Tile-Interpolation
   for(const rob of robots){
     if(!rob.alive||rob.tx===undefined)continue;
     if(rob.moveProgress<1.0){
-      rob.moveProgress=Math.min(1.0,rob.moveProgress+dt*CONF.MOVE_SPEED*rob.speed);
+      rob.moveProgress=Math.min(1.0,rob.moveProgress+dt*CONF.ROB_MOVE_SPEED*rob.speed);
       const t=smoothstep(rob.moveProgress);
       rob.px=rob.px+(rob.tx-rob.px)*t;
       rob.py=rob.py+(rob.ty-rob.py)*t;
@@ -107,37 +107,66 @@ function update(dt){
 
 function smoothstep(x){x=Math.max(0,Math.min(1,x));return x*x*(3-2*x);}
 
+// ── Roboterbewegung: kontinuierlich, alle 4 Richtungen, Kollision ──────────
 function updRobots(dt){
+  const DIRS=[[1,0],[-1,0],[0,1],[0,-1]];
+
   for(const rob of robots){
     if(!rob.alive||rob.c<0)continue;
+
+    // Alert-Tracking
     const dist=Math.abs(rob.c-player.c)+Math.abs(rob.r-player.r);
     rob.alertT=dist<=5?Math.min(1,rob.alertT+dt*3):Math.max(0,rob.alertT-dt*2);
 
     // Stun
     if(rob.stunT>0){rob.stunT-=dt;continue;}
 
-    rob.moveT+=dt;
-    const interval=1/rob.speed;
-    if(rob.moveT<interval)continue;
-    rob.moveT=0;
+    // Noch in Bewegung – warten bis Tile erreicht
+    if(rob.moveProgress<1.0)continue;
 
-    let dc=rob.axis==='h'?rob.dir:0,dr=rob.axis==='v'?rob.dir:0;
-    const nc=rob.c+dc,nr=rob.r+dr;
-
-    if(nc<0||nr<0||nc>=COLS||nr>=ROWS||
-       solid(nc,nr)||map[nr][nc]===T.MAT_PICKUP||
-       map[nr][nc]===T.ACID_POOL){
-      rob.dir*=-1;
-    } else {
-      rob.steps+=rob.dir;
-      if(Math.abs(rob.steps)>rob.range){rob.dir*=-1;rob.steps+=rob.dir*2;}
-      rob.c=nc;rob.r=nr;
-      // Start smooth slide
-      rob.tx=nc*TILE;rob.ty=nr*TILE;
-      rob.moveProgress=0.0;
+    // Startrichtung beim ersten Frame aus axis/dir initialisieren
+    if(rob._dx===undefined){
+      rob._dx=rob.axis==='h'?rob.dir:0;
+      rob._dy=rob.axis==='h'?0:rob.dir;
     }
 
-    // Kill player on contact
+    // Prüft ob eine Richtung (dc,dr) frei ist
+    function freeDir(dc,dr){
+      const nc=rob.c+dc,nr=rob.r+dr;
+      if(nc<0||nr<0||nc>=COLS||nr>=ROWS)return false;
+      if(solid(nc,nr)||map[nr][nc]===T.ACID_POOL)return false;
+      // Kollision mit anderem Roboter (Ziel-Tile besetzt)
+      for(const o of robots){
+        if(o===rob||!o.alive)continue;
+        if(o.c===nc&&o.r===nr)return false;
+      }
+      return true;
+    }
+
+    let dx=rob._dx,dy=rob._dy;
+
+    // Richtung nur ändern wenn geradeaus blockiert
+    if(!freeDir(dx,dy)){
+      const free=DIRS.filter(([dc,dr])=>freeDir(dc,dr));
+      if(free.length>0){
+        // Lieber nicht umkehren (außer als letzte Option)
+        const notRev=free.filter(([dc,dr])=>!(dc===-dx&&dr===-dy));
+        const pool=notRev.length>0?notRev:free;
+        [dx,dy]=pool[Math.floor(Math.random()*pool.length)];
+      } else {
+        // Komplett blockiert – diese Runde aussetzen
+        continue;
+      }
+    }
+
+    const nc=rob.c+dx,nr=rob.r+dy;
+    rob._dx=dx;rob._dy=dy;
+    rob.prevC=rob.c;rob.prevR=rob.r;
+    rob.c=nc;rob.r=nr;
+    rob.tx=nc*TILE;rob.ty=nr*TILE;
+    rob.moveProgress=0.0;
+
+    // Spieler treffen?
     killIfColliding(player.c,player.r);
   }
 }

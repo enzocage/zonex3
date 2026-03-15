@@ -35,3 +35,7 @@ const CHEST_CONTENTS={
 // Extra state flags
 let helpOn=false;
 let editorOn=false;
+
+// Positions of plutonium tiles already collected this level (persists across respawns)
+let collectedPlu=new Set();
+let _deathSnap=null; // unused, kept for safety

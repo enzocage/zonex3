@@ -89,6 +89,7 @@ function interactTile(c,r){
 
   if(t===T.PLUTONIUM){
     map[r][c]=T.FLOOR;
+    collectedPlu.add(`${c}:${r}`);
     pluCarried++;pluLeft--;
     if(radTimer<=0)radTimer=radMax;
     score+=CONF.PLU_SCORE;
@@ -249,7 +250,27 @@ function die(cause){
 }
 function respawn(){
   if(lives<=0){state='over';return;}
-  state='playing';resetLevel();
+  // Preserve alarm across reload
+  const savedAlarmOn=alarmOn,savedAlarmT=alarmT,savedAlarmSfxT=alarmSfxT;
+  // Full reload: restores map, robots, cameras, player from level data
+  loadLevelByIndex(currentLevelIndex);
+  // Remove all previously collected plutonium from the restored map
+  for(const key of collectedPlu){
+    const[c,r]=key.split(':').map(Number);
+    if(map[r]&&map[r][c]===T.PLUTONIUM)map[r][c]=T.FLOOR;
+  }
+  // Recount pluLeft
+  pluLeft=0;
+  for(let r=0;r<ROWS;r++)
+    for(let c=0;c<COLS;c++)
+      if(map[r][c]===T.PLUTONIUM)pluLeft++;
+  if(pluLeft===0)outOpen=true;
+  // Restore alarm
+  if(savedAlarmOn){
+    alarmOn=true;alarmT=savedAlarmT;alarmSfxT=savedAlarmSfxT;
+    for(const rob of robots)rob.speed*=1.3;
+  }
+  state='playing';
 }
 function levelDone(){
   state='win';
@@ -264,9 +285,10 @@ function levelDone(){
 }
 function nextZone(){
   zone++;state='playing';
+  collectedPlu.clear(); // fresh level, reset collected tracking
   if(currentLevelIndex>0&&currentLevelIndex<levelCount){
     currentLevelIndex++;
-    resetLevel(); // stabile Map während XHR lädt
+    resetLevel();
     loadLevelByIndex(currentLevelIndex);
   } else {
     resetLevel();
