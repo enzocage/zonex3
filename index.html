@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>ZONE X</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{
+  width:100%;height:100%;overflow:hidden;
+  background:#000;
+  display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+  font-family:'Courier New',monospace;
+  touch-action:none;
+  user-select:none;
+}
+#wrap{position:relative;display:inline-block;line-height:0}
+#gameCanvas{display:block;image-rendering:pixelated;touch-action:none}
+/* CRT overlay */
+#crt{
+  position:absolute;inset:0;pointer-events:none;
+  background:repeating-linear-gradient(
+    to bottom,
+    transparent 0px,transparent 2px,
+    rgba(0,0,0,0.15) 2px,rgba(0,0,0,0.15) 3px
+  );
+  border-radius:2px;
+}
+/* subtle vignette */
+#vig{
+  position:absolute;inset:0;pointer-events:none;
+  background:radial-gradient(ellipse at center,transparent 60%,rgba(0,0,0,0.55) 100%);
+}
+#bar{
+  color:#152215;font-size:8px;letter-spacing:3px;
+  margin-top:4px;white-space:nowrap;
+}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <canvas id="gameCanvas"></canvas>
+  <div id="crt"></div>
+  <div id="vig"></div>
+  <!-- Level select overlay (visible on title screen) -->
+  <div id="levelSelectOverlay" style="
+    position:absolute;top:83%;left:50%;transform:translateX(-50%);
+    display:flex;flex-direction:column;align-items:center;gap:6px;
+    pointer-events:auto;z-index:10;
+  ">
+    <label for="levelSelect" style="color:#336633;font:bold 9px monospace;letter-spacing:2px;">SELECT LEVEL</label>
+    <select id="levelSelect" style="
+      background:#010e05;border:1px solid #00ff4440;color:#00ff88;
+      font:bold 11px monospace;padding:4px 14px;cursor:pointer;
+      letter-spacing:1px;outline:none;min-width:130px;text-align:center;
+    ">
+      <option value="0">BUILT-IN</option>
+    </select>
+  </div>
+  <!-- Audio controls overlay (visible during play) -->
+  <div id="audioCtrl" style="
+    position:absolute;bottom:6px;right:6px;
+    display:flex;align-items:center;gap:6px;
+    opacity:0.55;transition:opacity 0.2s;
+    pointer-events:auto;
+  " onmouseenter="this.style.opacity='1'" onmouseleave="this.style.opacity='0.55'">
+    <button id="btnMusic" onclick="toggleMusic();updateMusicBtn()" style="
+      background:#011a08;border:1px solid #00ff4430;color:#00bb44;
+      font:bold 9px monospace;padding:2px 6px;cursor:pointer;
+      border-radius:2px;letter-spacing:1px;
+    ">♪ ON</button>
+    <span style="color:#006622;font:8px monospace">VOL</span>
+    <input id="sldMusic" type="range" min="0" max="100" value="10"
+      oninput="setMusicVol(this.value/100);document.getElementById('valMusic').textContent=this.value+'%'"
+      style="width:60px;accent-color:#00ff44;cursor:pointer">
+    <span id="valMusic" style="color:#00bb44;font:8px monospace;width:28px"> 10%</span>
+    <span style="color:#006622;font:8px monospace">SFX</span>
+    <input id="sldSfx" type="range" min="0" max="100" value="55"
+      oninput="setSfxVol(this.value/100);document.getElementById('valSfx').textContent=this.value+'%'"
+      style="width:60px;accent-color:#00ff44;cursor:pointer">
+    <span id="valSfx" style="color:#00bb44;font:8px monospace;width:28px"> 55%</span>
+  </div>
+</div>
+<div id="bar">☢ ZONE X · ARROWS/SWIPE:MOVE · SPACE/TAP²:MAT · Z:MAP · ESC:PAUSE ☢</div>
+
+<script src="js/constants.js"></script>
+<script src="js/map-data.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/state.js"></script>
+<script src="js/level-manager.js"></script>
+<script src="js/main.js"></script>
+<script src="js/camera-particles.js"></script>
+<script src="js/init.js"></script>
+<script src="js/game-logic.js"></script>
+<script src="js/input.js"></script>
+<script src="js/update.js"></script>
+<script src="js/draw-tiles.js"></script>
+<script src="js/help.js"></script>
+<script src="js/editor.js"></script>
+<script src="js/ai-generator.js"></script>
+<script src="js/draw.js"></script>
+</body>
+</html>
