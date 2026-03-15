@@ -7,7 +7,7 @@ let aCtx=null;
 let sfxGain=null;   // master sfx gain node
 let musicGain=null; // master music gain node
 let musicEl=null;   // <audio> element for streaming music
-let musicOn=true;
+let musicOn=false;
 let sfxVol=0.55;    // sfx master volume 0-1
 let musicVol=0.10;  // music start at 10%
 
@@ -26,38 +26,22 @@ function ea(){
 function initMusic(){
   if(musicEl)return; // already created
   musicEl=document.createElement('audio');
-  musicEl.crossOrigin='anonymous';
+  // No crossOrigin + no createMediaElementSource:
+  // connecting <audio> to Web Audio requires CORS headers from the server.
+  // vgmtreasurechest.com does not send them, so we play the element directly
+  // and control volume via musicEl.volume instead of a gain node.
   musicEl.loop=true;
   musicEl.preload='auto';
-  musicEl.volume=1;
+  musicEl.volume=musicVol;
   musicEl.src='https://nu.vgmtreasurechest.com/soundtracks/c64-remix-2018/deigeeid/01.%20Lightforce.mp3';
   document.body.appendChild(musicEl);
-  // Connect to Web Audio AFTER element is in DOM
-  try{
-    const src=aCtx.createMediaElementSource(musicEl);
-    src.connect(musicGain);
-  }catch(e){console.warn('Music connect error',e);}
-  if(musicOn) musicEl.play().catch(()=>{
-    // Autoplay blocked – retry on next user gesture
-    const retry=()=>{
-      if(musicOn&&musicEl.paused){musicEl.play().catch(()=>{});}
-      document.removeEventListener('click',retry);
-      document.removeEventListener('keydown',retry);
-      document.removeEventListener('touchstart',retry);
-    };
-    document.addEventListener('click',retry,{once:true});
-    document.addEventListener('keydown',retry,{once:true});
-    document.addEventListener('touchstart',retry,{once:true});
-  });
 }
 
 function toggleMusic(){
   musicOn=!musicOn;
-  if(!aCtx){ea();return;} // init on first use
-  if(!musicEl){initMusic();return;}
+  if(!musicEl) initMusic();
   if(musicOn){
-    if(aCtx.state==='suspended')aCtx.resume().then(()=>musicEl.play().catch(()=>{}));
-    else musicEl.play().catch(()=>{});
+    musicEl.play().catch(e=>console.warn('music play failed:',e));
   } else {
     musicEl.pause();
   }
@@ -65,7 +49,7 @@ function toggleMusic(){
 
 function setMusicVol(v){
   musicVol=Math.max(0,Math.min(1,v));
-  if(musicGain) musicGain.gain.setTargetAtTime(musicVol,aCtx.currentTime,0.05);
+  if(musicEl) musicEl.volume=musicVol;
 }
 function setSfxVol(v){
   sfxVol=Math.max(0,Math.min(1,v));
