@@ -8,13 +8,11 @@ function startGame(){
   syncLevelIndex();
   score=0;lives=CONF.START_LIVES;zone=1;hiScore=Math.max(hiScore,score);
   zoneScore=0;
-  resetLevel(); // immer zuerst: gültiger Spielzustand, Loop läuft stabil
+  loadLevelByIndex(currentLevelIndex);
   state='playing';
-  if(currentLevelIndex>0){
-    loadLevelByIndex(currentLevelIndex); // überschreibt Map wenn XHR fertig
-  }
 }
 function resetLevel(){
+  if(!MAP_BASE.length) return; // Sicherheits-Guard: Level noch nicht geladen
   map=MAP_BASE.map(r=>[...r]);
   pluLeft=0;outOpen=false;
   laserTick=0;laserOpen=false;
@@ -30,7 +28,7 @@ function resetLevel(){
 
   for(let r=0;r<ROWS;r++)
     for(let c=0;c<COLS;c++)
-      if(map[r][c]===T.PLUTONIUM)pluLeft++;
+      if(map[r]&&map[r][c]===T.PLUTONIUM)pluLeft++;
 
   player={c:2,r:2,facing:0,animT:0,
           px:2*TILE,py:2*TILE,       // pixel draw position (top-left of tile)

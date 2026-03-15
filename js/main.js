@@ -28,4 +28,5 @@ function loop(ts){
   update(dt);draw();
   requestAnimationFrame(loop);
 }
+loadDefaultLevel(); // befüllt MAP_BASE etc. aus window.ZONE_LEVELS[1]
 requestAnimationFrame(ts=>{lastT=ts;requestAnimationFrame(loop);});

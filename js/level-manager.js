@@ -1,28 +1,28 @@
 // === ZONE X - Level Manager ===
-// ── Neue Level: Nummer hier eintragen wenn neue JSON-Files in Levels/ hinzugefügt werden ──
+// ── Neue Level: Nummer hier eintragen + entsprechende levels/N.js laden ──
 const AVAILABLE_LEVELS = [1, 2, 3, 4, 5, 6];
 
-let currentLevelIndex = 0; // 0 = built-in, sonst Index in AVAILABLE_LEVELS
+let currentLevelIndex = 1;
 let levelCount = AVAILABLE_LEVELS.length;
+
+// Global fallback-Arrays – werden durch loadDefaultLevel() aus ZONE_LEVELS[1] befüllt
+let MAP_BASE   = [];
+let WARP_PAIRS = [];
+let ROBOT_DEFS = [];
+let CAM_DEFS   = [];
 
 function buildLevelDropdown() {
   const sel = document.getElementById('levelSelect');
   if (!sel) return;
   sel.innerHTML = '';
-  const optB = document.createElement('option');
-  optB.value = 0;
-  optB.textContent = 'BUILT-IN';
-  sel.appendChild(optB);
   for (const n of AVAILABLE_LEVELS) {
     const opt = document.createElement('option');
     opt.value = n;
     opt.textContent = `LEVEL ${String(n).padStart(2,'0')}`;
     sel.appendChild(opt);
   }
-  if (levelCount > 0) {
-    sel.value = AVAILABLE_LEVELS[0];
-    currentLevelIndex = AVAILABLE_LEVELS[0];
-  }
+  sel.value = AVAILABLE_LEVELS[0];
+  currentLevelIndex = AVAILABLE_LEVELS[0];
 }
 
 function showLevelOverlay(visible) {
@@ -32,37 +32,37 @@ function showLevelOverlay(visible) {
 
 function syncLevelIndex() {
   const sel = document.getElementById('levelSelect');
-  if (sel) currentLevelIndex = parseInt(sel.value) || 0;
+  if (sel) currentLevelIndex = parseInt(sel.value) || 1;
 }
 
+// Befüllt MAP_BASE etc. synchron aus window.ZONE_LEVELS[1]
+function loadDefaultLevel() {
+  const data = (window.ZONE_LEVELS || {})[1];
+  if (!data) { console.error('ZONE_LEVELS[1] nicht gefunden'); return; }
+  MAP_BASE   = data.map.map(r => Array.isArray(r) ? [...r] : []);
+  ROBOT_DEFS = (data.robots  && data.robots.length  > 0) ? data.robots  : [];
+  CAM_DEFS   = (data.cameras && data.cameras.length > 0) ? data.cameras : [];
+  WARP_PAIRS = [];
+  if (data.warpPairs) {
+    for (const wp of data.warpPairs) {
+      WARP_PAIRS.push({from: wp.from, to: wp.to});
+      WARP_PAIRS.push({from: wp.to,   to: wp.from});
+    }
+  }
+}
+
+// Lädt Level n synchron aus window.ZONE_LEVELS – gibt Promise.resolve() zurück
+// damit bestehende .then()-Aufrufer weiter funktionieren
 function loadLevelByIndex(n) {
-  return new Promise(resolve => {
-    const xhr = new XMLHttpRequest();
-    xhr.open('GET', `levels/${n}.json`, true);
-    xhr.onload = () => {
-      // status 0 = file:// success, 200 = HTTP success
-      if (xhr.status === 200 || xhr.status === 0) {
-        try {
-          const data = JSON.parse(xhr.responseText);
-          applyLevelData(data);
-          currentLevelIndex = n;
-        } catch(e) {
-          console.error('Level parse error', n, e);
-          resetLevel();
-        }
-      } else {
-        console.error('Level not found', n, 'status:', xhr.status);
-        resetLevel();
-      }
-      resolve();
-    };
-    xhr.onerror = () => {
-      console.error('Level load error', n);
-      resetLevel();
-      resolve();
-    };
-    xhr.send();
-  });
+  const data = (window.ZONE_LEVELS || {})[n];
+  if (data) {
+    applyLevelData(data);
+    currentLevelIndex = n;
+  } else {
+    console.error('Level nicht gefunden:', n);
+    resetLevel();
+  }
+  return Promise.resolve();
 }
 
 function applyLevelData(data) {
@@ -112,7 +112,7 @@ function applyLevelData(data) {
   updateCamera(true);
 }
 
-// Dropdown beim Laden sofort befüllen (kein async nötig)
+// Dropdown befüllen
 buildLevelDropdown();
 
 // Sofort syncen wenn Spieler Dropdown ändert
