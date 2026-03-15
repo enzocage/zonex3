@@ -4,7 +4,7 @@
 
 ![Zone X](https://img.shields.io/badge/Platform-Browser-00ff88?style=flat-square) ![License](https://img.shields.io/badge/License-MIT-00aa44?style=flat-square) ![Size](https://img.shields.io/badge/Size-Single%20File-004422?style=flat-square)
 
-![Zone X Cover](screenshots/cover.png)
+![Zone X Cover](content/screenshots/cover.png)
 
 ---
 
@@ -97,7 +97,7 @@ No installation. No server. No account. Works offline.
 
 ## The Game Loop
 
-![Gameplay Screenshot](screenshots/gameplay.png)
+![Gameplay Screenshot](content/screenshots/gameplay.png)
 
 ```
 START
@@ -296,7 +296,7 @@ Drops all carried plutonium in tiles around you. Penalises score (−400 per can
 
 ## The Level Editor
 
-![Level Editor Screenshot](screenshots/editor.png)
+![Level Editor Screenshot](content/screenshots/editor.png)
 
 Press **[E]** during gameplay to open the editor. The current game map loads automatically.
 
