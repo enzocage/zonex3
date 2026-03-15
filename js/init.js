@@ -32,13 +32,15 @@ function resetLevel(){
       if(map[r]&&map[r][c]===T.PLUTONIUM)pluLeft++;
 
   player={c:2,r:2,facing:0,animT:0,
-          px:2*TILE,py:2*TILE,       // pixel draw position (top-left of tile)
-          tx:2*TILE,ty:2*TILE,       // target pixel position
+          px:2*TILE,py:2*TILE,
+          startPx:2*TILE,startPy:2*TILE,
+          tx:2*TILE,ty:2*TILE,
           moving:false,moveProgress:1.0,
           nextDx:0,nextDy:0,hasPending:false};
 
   robots=ROBOT_DEFS.map((d,i)=>({
     c:d.c,r:d.r,px:d.c*TILE,py:d.r*TILE,
+    startPx:d.c*TILE,startPy:d.r*TILE,
     tx:d.c*TILE,ty:d.r*TILE,moveProgress:1.0,prevC:d.c,prevR:d.r,
     axis:d.axis,range:d.range,
     speed:d.speed*(1+zone*0.04),

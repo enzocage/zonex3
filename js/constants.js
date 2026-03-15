@@ -57,7 +57,7 @@ const CONF = {
   RAD_MAX:    20,
   // Movement
   MOVE_SPEED:     12.0,   // player tile-slide speed
-  ROB_MOVE_SPEED:  4.5,   // robot tile-slide speed (continuous feel)
+  ROB_MOVE_SPEED:  1.5,   // robot tile-slide speed (continuous feel)
   ROB_WANDER:      0.07,  // probability of direction change per tile (0–1)
   // Keyboard
   KEY_REPEAT_DELAY: 0.14,

@@ -58,6 +58,7 @@ function commitMove(dx,dy){
   if(state!=='playing')return;
 
   // Start smooth animation toward new tile
+  player.startPx=player.px;player.startPy=player.py;
   player.tx=nc*TILE;player.ty=nr*TILE;
   player.moveProgress=0.0;
 

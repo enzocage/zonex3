@@ -73,36 +73,33 @@ function update(dt){
   for(const p of popups)p.life-=dt;
   popups.splice(0,popups.length,...popups.filter(p=>p.life>0));
 
-  // Smooth movement interpolation
-  // Player
+  // Player movement – linear interpolation (constant speed, no ease at tile
+  // boundaries so chained moves scroll without any stutter)
   if(player.moveProgress<1.0){
     player.moveProgress=Math.min(1.0,player.moveProgress+dt*CONF.MOVE_SPEED);
-    const t=smoothstep(player.moveProgress);
-    player.px=player.px+(player.tx-player.px)*t;
-    player.py=player.py+(player.ty-player.py)*t;
-    // snap to target at end
+    player.px=player.startPx+(player.tx-player.startPx)*player.moveProgress;
+    player.py=player.startPy+(player.ty-player.startPy)*player.moveProgress;
     if(player.moveProgress>=1.0){
       player.px=player.tx;player.py=player.ty;
-      // process queued input
       if(player.hasPending){
         player.hasPending=false;
         commitMove(player.nextDx,player.nextDy);
       }
     }
   }
-  // Robots – kontinuierliche Tile-Interpolation
+  // Robots
   for(const rob of robots){
     if(!rob.alive||rob.tx===undefined)continue;
     if(rob.moveProgress<1.0){
       rob.moveProgress=Math.min(1.0,rob.moveProgress+dt*CONF.ROB_MOVE_SPEED*rob.speed);
       const t=smoothstep(rob.moveProgress);
-      rob.px=rob.px+(rob.tx-rob.px)*t;
-      rob.py=rob.py+(rob.ty-rob.py)*t;
+      rob.px=rob.startPx+(rob.tx-rob.startPx)*t;
+      rob.py=rob.startPy+(rob.ty-rob.startPy)*t;
       if(rob.moveProgress>=1.0){rob.px=rob.tx;rob.py=rob.ty;}
     }
   }
 
-  updateCamera(false);
+  updateCamera(false,dt);
 }
 
 function smoothstep(x){x=Math.max(0,Math.min(1,x));return x*x*(3-2*x);}
@@ -130,12 +127,11 @@ function updRobots(dt){
       rob._dy=rob.axis==='h'?0:rob.dir;
     }
 
-    // Prüft ob eine Richtung (dc,dr) frei ist
+    // Nur FLOOR ist begehbar – alles andere ist Hindernis
     function freeDir(dc,dr){
       const nc=rob.c+dc,nr=rob.r+dr;
       if(nc<0||nr<0||nc>=COLS||nr>=ROWS)return false;
-      if(solid(nc,nr)||map[nr][nc]===T.ACID_POOL)return false;
-      // Kollision mit anderem Roboter (Ziel-Tile besetzt)
+      if(map[nr][nc]!==T.FLOOR)return false;
       for(const o of robots){
         if(o===rob||!o.alive)continue;
         if(o.c===nc&&o.r===nr)return false;
@@ -163,6 +159,7 @@ function updRobots(dt){
     rob._dx=dx;rob._dy=dy;
     rob.prevC=rob.c;rob.prevR=rob.r;
     rob.c=nc;rob.r=nr;
+    rob.startPx=rob.px;rob.startPy=rob.py;
     rob.tx=nc*TILE;rob.ty=nr*TILE;
     rob.moveProgress=0.0;
 

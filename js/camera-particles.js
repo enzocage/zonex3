@@ -3,16 +3,17 @@
 // ═══════════════════════════════════════════════════════════════
 //  CAMERA
 // ═══════════════════════════════════════════════════════════════
-function updateCamera(instant){
-  // Track smooth pixel position for camera
+function updateCamera(instant,dt){
   const pcx=player.px/TILE, pcy=player.py/TILE;
   const tx=Math.max(0,Math.min(COLS-VIEW_W,pcx-VIEW_W/2+0.5));
   const ty=Math.max(0,Math.min(ROWS-VIEW_H,pcy-VIEW_H/2+0.5));
   if(instant){camX=tx;camY=ty;camVX=0;camVY=0;return;}
-  const k=CONF.CAM_K,damp=CONF.CAM_DAMP;
-  camVX=(camVX+(tx-camX)*k)*damp;
-  camVY=(camVY+(ty-camY)*k)*damp;
-  camX+=camVX;camY+=camVY;
+  // Frame-rate-independent exponential follow.
+  // Time constant τ=1/18 s → camera closes ~18 tile-lengths per second.
+  // At 60 fps each frame closes ≈28 % of remaining gap → smooth with no bounce.
+  const f=1-Math.exp(-18*dt);
+  camX+=(tx-camX)*f;
+  camY+=(ty-camY)*f;
 }
 
 // ═══════════════════════════════════════════════════════════════
