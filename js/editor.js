@@ -785,6 +785,13 @@ function editorSave(){
     ed.aiLastMsg='Level lokal gespeichert!';
     setTimeout(()=>{if(ed.aiLastMsg==='Level lokal gespeichert!')ed.aiLastMsg='';},3000);
   }catch(e){console.warn('localStorage save failed:',e);}
+  // Copy to clipboard
+  try{
+    navigator.clipboard.writeText(json).then(()=>{
+      ed.aiLastMsg='JSON gespeichert & in Zwischenablage kopiert!';
+      setTimeout(()=>{if(ed.aiLastMsg==='JSON gespeichert & in Zwischenablage kopiert!')ed.aiLastMsg='';},3000);
+    }).catch(()=>{});
+  }catch(e){}
   // Download JSON file
   const blob=new Blob([json],{type:'application/json'});
   const url=URL.createObjectURL(blob);

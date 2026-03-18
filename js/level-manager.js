@@ -1,6 +1,6 @@
 // === ZONE X - Level Manager ===
 // ── Neue Level: Nummer hier eintragen + entsprechende levels/N.js laden ──
-const AVAILABLE_LEVELS = [1, 2, 3, 4, 5, 6];
+const AVAILABLE_LEVELS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20];
 
 let currentLevelIndex = 1;
 let levelCount = AVAILABLE_LEVELS.length;
@@ -19,7 +19,9 @@ function buildLevelDropdown() {
   for (const n of AVAILABLE_LEVELS) {
     const opt = document.createElement('option');
     opt.value = n;
-    opt.textContent = `LEVEL ${String(n).padStart(2,'0')}`;
+    const data = (window.ZONE_LEVELS || {})[n];
+    const label = data && data.name ? data.name : `LEVEL ${String(n).padStart(2,'0')}`;
+    opt.textContent = label;
     sel.appendChild(opt);
   }
   sel.value = AVAILABLE_LEVELS[0];
